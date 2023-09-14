@@ -29,8 +29,6 @@ plugins:
   - git-revision-date-localized:
       fallback_to_build_date: true
       enabled: !ENV [ENABLED_GIT_REVISION_DATE, False]
-  - mkdocs-jupyter:
-      execute: false 
 
 markdown_extensions:
   - extra
