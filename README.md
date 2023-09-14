@@ -37,7 +37,7 @@ Our team consists of the following members who fulfil the following roles:
 * **Theironne velliam** - theironne.velliam@hva.nl<br/>
 *Development Team*
 
-* **René Huiberts** - rene.huiberts@hva.nl<br/>
+* **Rene Huiberts** - rene.huiberts@hva.nl<br/>
 *Development Team*
 
 Our team report our findings to the online website, but also our coaches:
