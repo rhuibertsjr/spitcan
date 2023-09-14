@@ -1,0 +1,49 @@
+site_name:        Project PVC's Vlow Control  
+site_description: Documentation for PVC project.
+site_author:      Team PVC  
+
+site_url:         https://localhost:8000/
+
+nav:
+  - PVC's Vlow Control:
+    - 'index.md'
+  - Weekly report:
+    - './weekly-reports/week-1.md'
+  
+theme:
+  name: material 
+  palette:
+    primary: deep
+    accent: indigo
+  icon:
+    logo: material/school
+    repo: fontawesome/brands/git-alt
+  favicon: images/favicon.svg
+  features:
+    - navigation.tabs
+    - navigation.instant
+    - toc.integrate
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+      enabled: !ENV [ENABLED_GIT_REVISION_DATE, False]
+  - mkdocs-jupyter:
+      execute: false 
+
+markdown_extensions:
+  - extra
+  - smarty
+  - tables
+  - admonition
+  - codehilite:
+      guess_lang: true
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
