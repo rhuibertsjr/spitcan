@@ -65,7 +65,7 @@ While using this 3D-printer is not required, these configurations may vary on
 different 3D-printers. The following settings are used:
 
 - **Filament:** PLA
-- **Temperature:** 210°C
+- **Temperature:** 210 C
 - **Speed:** 80mm/s
 - **Support:** no
 
