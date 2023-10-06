@@ -11,16 +11,16 @@ is passing through the pipe, and it should activate when water flows through
 the system. There are multiple ways to achieve these requirements, the most
 viable options are:
 
-**Traditional flow meter**:
+**Traditional flow meter**: <br/>
 - (+) Has multiple states. 
 - (-) Blocks the flow of the water. 
 - (-) Can cause leaks. 
 
-**Ultrasonic flow meter**:
+**Ultrasonic flow meter**: <br/>
 - (+) Accurate and supports multiple states. 
 - (-) Hard to implement and seal. 
 
-**Paddle Flow Switch**:
+**Paddle Flow Switch**: <br/>
 - (+) Simple to implement. 
 - (+) No calculations needed. 
 - (+) Has two states. 
