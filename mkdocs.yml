@@ -9,6 +9,8 @@ nav:
     - 'index.md'
   - Weekly report:
     - './weekly-reports/week-1.md'
+  - Paddle Flow Switch:
+    - './paddle-flow-switch/design.md'
   
 theme:
   name: material 
