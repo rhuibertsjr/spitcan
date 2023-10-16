@@ -79,7 +79,7 @@ different 3D-printers. The following settings are used:
 - **Nozzle:** 0.4mm
 
 ## 4. Prototyping
-![Current result](../resources/images/paddle-flow-switch/pfs-result.png)
+![Current result](../resources/images/paddle-flow-switch/pfs-result.jpg)
 *Currently in use*.
 
 ### 4.1 Physical
@@ -87,7 +87,7 @@ different 3D-printers. The following settings are used:
 #### 4.1.1 Prototype 1
 ![Prototype 1](../resources/images/paddle-flow-switch/pfs-prototype-1.png)
 
-#### 4.1.2 Prototype 3
+#### 4.1.2 Prototype 2
 ![Prototype 2](../resources/images/paddle-flow-switch/pfs-prototype-2.png)
 
 #### 4.1.3 Prototype 3
