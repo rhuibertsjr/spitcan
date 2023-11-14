@@ -45,5 +45,62 @@ esp_err_t comms_can_add_device (
 esp_err_t comms_can_transmit (
   spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes);
 
+//= rhjr: pvc monitoring
+
+typedef enum pvc_monitor_type pvc_monitor_type;
+enum pvc_monitor_type
+{
+  ERROR = 0x00, // rhjr: always expect error
+  WARNING,
+  INFO
+};
+
+typedef enum pvc_monitor_tag pvc_monitor_tag;
+enum pvc_monitor_tag
+{
+  TAG_NONE = 0x00,
+  TAG_PLATFORM,
+  TAG_ASSERT,
+  TAG_SPI,
+  TAG_MAX
+};
+
+const char *_pvc_monitor_type_table[] = {
+  "ERROR", "WARNING", "INFO"};
+
+const char *_pvc_monitor_tag_table[] = {
+  [TAG_NONE]     = "DEBUG",
+  [TAG_PLATFORM] = "Platform",
+  [TAG_ASSERT]   = "ASSERTION",
+  [TAG_SPI]      = "SPI"
+};
+
+internal void
+_pvc_monitor_stdout_log(
+  pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...);
+
+internal _Noreturn uintptr_t
+_pvc_monitor_assert (
+  const char* condition, const char* file, uint32_t line, const char *msg, ...);
+
+//- rhjr: pvc logging
+
+#ifdef PVC_LOGGING
+# define LOG(tag, type, message, ...)                                          \
+  STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)
+#else
+# define LOG(tag, type, message, ...)
+#endif
+
+//- rhjr: pvc assert
+
+#ifdef PVC_ASSERT
+# define ASSERT(condition, msg, ...)                                           \
+    STATEMENT( if(!(condition)) {                                              \
+      _pvc_monitor_assert(#condition, __FILE__, __LINE__, msg, ##__VA_ARGS__);})
+#else
+# define ASSERT(condition, msg, ...)
+#endif
+
 #endif // PVC_CORE_H
 // pvc.h ends here.
