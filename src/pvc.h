@@ -15,37 +15,51 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-//- rhjr: Helper macros
+//= rhjr: Helpers
 
 #define internal static 
+
 #define STATEMENT(x) do { x } while(0);
 
-#define SECONDS(seconds) (((seconds) * 1000) / portTICK_PERIOD_MS)
-
-//- rhjr: can-bus
-// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/
-// peripherals/spi_master.html#gpio-matrix-and-io-mux
-
-#define PVC_SPI_PIN              SPI2_HOST /* rhjr: SPI1_HOST is reserved. */
-
-#define PVC_SPI_PIN_CLOCK        0x14 
-#define PVC_SPI_PIN_CLOCK_SPEED  SPI_MASTER_FREQ_8M 
-
-#define PVC_SPI_PIN_MISO         0x12 
-#define PVC_SPI_PIN_MOSI         0x13 
-#define PVC_SPI_PIN_CS0          0x15 /* rhjr: Only the first chip. */
-#define PVC_SPI_PIN_CS           0x22
+//= rhjr: serial peripheral interface (SPI)
 
 #define PVC_SPI_MODE             0x0
+#define PVC_SPI_PIN_CLOCK_SPEED  SPI_MASTER_FREQ_8M  
 
-esp_err_t comms_can_initialize (spi_host_device_t spi_host);
-esp_err_t comms_can_add_device (
+#ifdef PVC_SPI_MASTER
+#  define PVC_SPI_PIN            SPI2_HOST /* rhjr: SPI1_HOST is reserved.    */
+
+#  define PVC_SPI_PIN_CLOCK      0x14 
+#  define PVC_SPI_PIN_MISO       0x12 
+#  define PVC_SPI_PIN_MOSI       0x13 
+#  define PVC_SPI_PIN_CS         0x22
+
+#  define PVC_SPI_PIN_CS0        0x15      /* rhjr: Only the first chip.      */
+
+#  define PVC_SPI_SLAVE          0x0
+#else // PVC_SPI_SLAVE
+#  define PVC_SPI_PIN            RCV_HOST 
+
+#  define PVC_SPI_PIN_CLOCK      0x14 
+#  define PVC_SPI_PIN_MISO       0x12 
+#  define PVC_SPI_PIN_MOSI       0x13 
+#  define PVC_SPI_PIN_CS0        0x15      /* rhjr: Only the first chip.      */
+#  define PVC_SPI_PIN_CS         0x22
+
+#  define PVC_SPI_MASTER         0x0
+#  define PVC_SPI_SLAVE          0x1
+#endif
+
+//- rhjr: api
+
+esp_err_t spitcan_initialize (spi_host_device_t spi_host);
+esp_err_t spitcan_add_device (
   spi_host_device_t spi_host, spi_device_handle_t *device);
 
-esp_err_t comms_can_transmit (
+esp_err_t spitcan_transmit (
   spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes);
 
-//= rhjr: pvc monitoring
+//= rhjr: logging & assertions
 
 typedef enum pvc_monitor_type pvc_monitor_type;
 enum pvc_monitor_type
@@ -75,15 +89,11 @@ const char *_pvc_monitor_tag_table[] = {
   [TAG_SPI]      = "SPI"
 };
 
+//- rhjr: logging (stdout)
+
 internal void
 _pvc_monitor_stdout_log(
   pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...);
-
-internal _Noreturn uintptr_t
-_pvc_monitor_assert (
-  const char* condition, const char* file, uint32_t line, const char *msg, ...);
-
-//- rhjr: pvc logging
 
 #ifdef PVC_LOGGING
 # define LOG(tag, type, message, ...)                                          \
@@ -92,7 +102,11 @@ _pvc_monitor_assert (
 # define LOG(tag, type, message, ...)
 #endif
 
-//- rhjr: pvc assert
+//- rhjr: abort & assertion
+
+internal _Noreturn uintptr_t
+_pvc_monitor_assert (
+  const char* condition, const char* file, uint32_t line, const char *msg, ...);
 
 #ifdef PVC_ASSERT
 # define ASSERT(condition, msg, ...)                                           \

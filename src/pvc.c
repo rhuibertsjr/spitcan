@@ -44,7 +44,7 @@ _pvc_monitor_assert (
 //= rhjr: can-bus
 
 esp_err_t
-comms_can_initialize (spi_host_device_t spi_host)
+spitcan_initialize (spi_host_device_t spi_host)
 {
   ASSERT(spi_host < SPI_HOST_MAX, "Invalid SPI host");
   LOG(INFO, TAG_SPI, "Initializing");
@@ -64,7 +64,7 @@ comms_can_initialize (spi_host_device_t spi_host)
 }
 
 esp_err_t
-comms_can_add_device (spi_host_device_t spi_host, spi_device_handle_t *device)
+spitcan_add_device (spi_host_device_t spi_host, spi_device_handle_t *device)
 {
   // rhjr: Esp32 allows a maximum of three devices (slaves).
   ASSERT(spi_host < SPI_HOST_MAX, "Invalid SPI host");
@@ -90,7 +90,7 @@ comms_can_add_device (spi_host_device_t spi_host, spi_device_handle_t *device)
 }
 
 esp_err_t
-comms_can_transmit (
+spitcan_transmit (
   spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes)
 {
   ASSERT(length_in_bytes > 0, "expected at least a length of 1");
@@ -119,13 +119,13 @@ app_main (void)
 
   //- rhjr: serial communication
   spi_device_handle_t spi_device;
-  comms_can_initialize(PVC_SPI_PIN);
+  spitcan_initialize(PVC_SPI_PIN);
 
-  comms_can_add_device(PVC_SPI_PIN, &spi_device);
+  spitcan_add_device(PVC_SPI_PIN, &spi_device);
 
   uint8_t data = 69;
 
-  comms_can_transmit(spi_device, &data, 1);
+  spitcan_transmit(spi_device, &data, 1);
 
   //- rhjr: application loop
   for (;;)
