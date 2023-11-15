@@ -2,7 +2,6 @@
 #define PVC_CORE_H
 
 #include "driver/gpio.h"
-#include "driver/spi_master.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,16 +9,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
-
-//= rhjr: helpers
-
-#define internal static 
-
-//- rhjr: helper functions
-
-#define STATEMENT(x) do { x } while(0);
+#include <string.h>
 
 //= rhjr: serial peripheral interface
+
+#include "driver/spi_master.h"
+#include "driver/spi_slave.h"
 
 #define PVC_SPI_MODE      0x0
 #define PVC_SPI_SCK_FREQ  SPI_MASTER_FREQ_8M 
@@ -36,26 +31,44 @@
 
 #  define PVC_SPI_SLAVE   0x0
 #else // PVC_SPI_SLAVE
-#  define PVC_SPI_PIN     RCV_HOST 
+#  define PVC_SPI_PIN     HSPI_HOST 
 
+#  define PVC_SPI_PIN_INT 0x02 
 #  define PVC_SPI_PIN_SCK 0x14 
 #  define PVC_SPI_PIN_SDO 0x13 /* MOSI                                        */
 #  define PVC_SPI_PIN_SDI 0x12 /* MISO                                        */
 #  define PVC_SPI_PIN_CS0 0x15 /* rhjr: Reserved for first slave.             */
 #  define PVC_SPI_PIN_CSB 0x22
 
-#  define PVC_SPI_MASTER  0x0
 #  define PVC_SPI_SLAVE   0x1
 #endif  
 
 //- rhjr: api
 
-esp_err_t pvc_spitcan_initialize (spi_host_device_t spi_host);
+esp_err_t pvc_spitcan_master_initialize (spi_host_device_t spi_host);
+esp_err_t pvc_spitcan_slave_initialize  (spi_host_device_t spi_host);
+
 esp_err_t pvc_spitcan_add_device (
   spi_host_device_t spi_host, spi_device_handle_t *device);
 
 esp_err_t pvc_spitcan_transmit (
   spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes);
+
+#if PVC_SPI_MASTER
+#  define pvc_spitcan_initialize(spi_host)                                     \
+     pvc_spitcan_master_initialize(spi_host)
+#else
+#  define pvc_spitcan_initialize(spi_host)                                     \
+     pvc_spitcan_slave_initialize(spi_host)
+#endif  
+
+//= rhjr: helpers
+
+#define internal static 
+
+//- rhjr: helper functions
+
+#define STATEMENT(x) do { x } while(0);
 
 //= rhjr: abort, assertions & logging
 
