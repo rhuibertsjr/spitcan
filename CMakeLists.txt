@@ -6,7 +6,6 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 add_definitions(-DPVC_LOGGING=1)
 add_definitions(-DPVC_ASSERT=1)
-add_definitions(-DPVC_SPI_MASTER=0)
 
 project(project-pvc)
 

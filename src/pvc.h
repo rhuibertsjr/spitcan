@@ -3,6 +3,9 @@
 
 #include "driver/gpio.h"
 
+#include "driver/spi_master.h"
+#include "driver/spi_slave.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -11,64 +14,26 @@
 #include <stdarg.h>
 #include <string.h>
 
-//= rhjr: serial peripheral interface
+//= rhjr: context cracking
 
-#include "driver/spi_master.h"
-#include "driver/spi_slave.h"
+#ifndef __GNUC__
+#  error "(PVC) YOU ARE USING AN UNSUPPORTED COMPILER, PLEASE USE              \
+  xtensa-esp32-elf-gcc."
+#endif
 
-#define PVC_SPI_MODE      0x0
-#define PVC_SPI_SCK_FREQ  SPI_MASTER_FREQ_8M 
-#define PVC_SPI_QUEUE_LEN 0x7
+#ifndef CONFIG_IDF_TARGET_ESP32
+#  error "(PVC) YOU ARE USING AN UNSUPPORTED TARGET, PLEASE USE ESP32."
+#endif
 
-#if PVC_SPI_MASTER
-#  define PVC_SPI_PIN     SPI2_HOST /* rhjr: SPI1_HOST is reserved.           */
-
-#  define PVC_SPI_PIN_SCK 0x14 
-#  define PVC_SPI_PIN_SDO 0x13 /* MOSI                                        */
-#  define PVC_SPI_PIN_SDI 0x12 /* MISO                                        */
-#  define PVC_SPI_PIN_CS0 0x15
-#  define PVC_SPI_PIN_CSB 0x22
-
-#  define PVC_SPI_SLAVE   0x0
-#else // PVC_SPI_SLAVE
-#  define PVC_SPI_PIN     HSPI_HOST 
-
-#  define PVC_SPI_PIN_INT 0x02 
-#  define PVC_SPI_PIN_SCK 0x14 
-#  define PVC_SPI_PIN_SDO 0x13 /* MOSI                                        */
-#  define PVC_SPI_PIN_SDI 0x12 /* MISO                                        */
-#  define PVC_SPI_PIN_CS0 0x15 /* rhjr: Reserved for first slave.             */
-#  define PVC_SPI_PIN_CSB 0x22
-
-#  define PVC_SPI_SLAVE   0x1
-#endif  
-
-//- rhjr: api
-
-esp_err_t pvc_spitcan_master_initialize (spi_host_device_t spi_host);
-esp_err_t pvc_spitcan_slave_initialize  (spi_host_device_t spi_host);
-
-esp_err_t pvc_spitcan_add_device (
-  spi_host_device_t spi_host, spi_device_handle_t *device);
-
-esp_err_t pvc_spitcan_transmit (
-  spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes);
-
-#if PVC_SPI_MASTER
-#  define pvc_spitcan_initialize(spi_host)                                     \
-     pvc_spitcan_master_initialize(spi_host)
-#else
-#  define pvc_spitcan_initialize(spi_host)                                     \
-     pvc_spitcan_slave_initialize(spi_host)
-#endif  
-
-//= rhjr: helpers
+//= rhjr: utilities & helpers
 
 #define internal static 
+#define global_variable static 
 
 //- rhjr: helper functions
 
 #define STATEMENT(x) do { x } while(0);
+
 
 //= rhjr: abort, assertions & logging
 
@@ -112,22 +77,28 @@ _pvc_monitor_stdout_log(
   pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...);
 
 #if PVC_LOGGING
-#  define LOG(tag, type, message, ...)                                        \
+#  define LOG(tag, type, message, ...)                                         \
       STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)
+#  define DEBUG(message, ...)                                                  \
+      STATEMENT(_pvc_monitor_stdout_log(                                       \
+  TAG_NONE, INFO, message, ##__VA_ARGS__);)
 #else
 #  define LOG(tag, type, message, ...)
+#  define DEBUG(tag, type, message, ...)
 #endif
 
 //- rhjr: abort & assertions
 
 internal _Noreturn uintptr_t
 _pvc_monitor_assert (
-  const char* condition, const char* file, uint32_t line, const char *msg, ...);
+  const char* condition, const char* file, const char* func,
+  uint32_t line, const char *msg, ...);
 
 #if PVC_ASSERT
 #  define ASSERT(condition, msg, ...)                                          \
-    STATEMENT( if(!(condition)) {                                              \
-      _pvc_monitor_assert(#condition, __FILE__, __LINE__, msg, ##__VA_ARGS__);})
+     STATEMENT( if(!(condition)) {                                             \
+  _pvc_monitor_assert(                                                    \
+  #condition, __FILE__, __FUNCTION__, __LINE__, msg, ##__VA_ARGS__);})
 #else
 #  define ASSERT(condition, msg, ...)
 #endif
