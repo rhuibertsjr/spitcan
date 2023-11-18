@@ -16,11 +16,6 @@
 
 //= rhjr: context cracking
 
-#ifndef __GNUC__
-#  error "(PVC) YOU ARE USING AN UNSUPPORTED COMPILER, PLEASE USE              \
-  xtensa-esp32-elf-gcc."
-#endif
-
 #ifndef CONFIG_IDF_TARGET_ESP32
 #  error "(PVC) YOU ARE USING AN UNSUPPORTED TARGET, PLEASE USE ESP32."
 #endif
@@ -33,7 +28,6 @@
 //- rhjr: helper functions
 
 #define STATEMENT(x) do { x } while(0);
-
 
 //= rhjr: abort, assertions & logging
 

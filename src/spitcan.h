@@ -15,6 +15,16 @@
 
 //= rhjr: mcp2515 types
 
+typedef enum pvc_spitcan_message_priority pvc_spitcan_message_priority;
+enum pvc_spitcan_message_priority
+{
+  LOW_PRIORITY       = 0x00,
+  LOW_INTM_PRIORITY,
+  HIGH_INTM_PRIORITY, 
+  HIGH_PRIORITY,
+  MAX_PRIORITY
+};
+
 typedef enum mcp_instruction mcp_instruction;
 enum mcp_instruction
 {
@@ -24,10 +34,13 @@ enum mcp_instruction
   INSTRUCTION_RESET  = 0xC0
 };
 
-typedef enum mcp_register mcp_register;
-enum mcp_register
+typedef enum pvc_mcp_register pvc_mcp_register;
+enum pvc_mcp_register
 {
-  REGISTER_CANCTRL = 0x0F,
+  REGISTER_CANCTRL  = 0x0F,
+  REGISTER_TXB0CTRL = 0x30, 
+  REGISTER_TXB0SIDH = 0x31, 
+  REGISTER_TXB0SIDL = 0x32 
 };
 
 typedef enum mcp_mode mcp_mode;
@@ -41,6 +54,29 @@ enum mcp_mode
   MODE_MAX    
 };
 
+typedef enum pvc_mcp_register_TXnCTRL pvc_mcp_register_TXnCTRL;
+enum pvc_mcp_register_TXnCTRL
+{
+  TXB_ABTF   = 0x40,
+  TXB_MLOA   = 0x20,
+  TXB_TXERR  = 0x10,
+  TXB_TXREQ  = 0x08,
+  TXB_UNUSED = 0x04,
+  TXB_TXP    = 0x03
+};
+
+//- rhjr: CAN
+
+#define PVC_CAN_SFF_MASK 0x000007FFUL /* rhjr: standard frame format (SFF) */
+
+typedef struct pvc_spitcan_message pvc_spitcan_message;
+struct pvc_spitcan_message
+{
+  uint32_t id;
+  uint8_t length_in_bytes;
+  uint8_t *data;
+};
+
 //= rhjr: mcp2515 interface
 
 internal esp_err_t pvc_mcp2515_reset    (spi_device_handle_t *device);
@@ -48,13 +84,9 @@ internal esp_err_t pvc_mcp2515_set_mode (mcp_mode mode);
 
 //= rhjr: spitcan interface
 
-internal void pvc_spitcan_initalize  (spi_host_device_t   host);
+internal void pvc_spitcan_initalize (spi_host_device_t   host);
 internal esp_err_t pvc_spitcan_add_device (
   spi_host_device_t host, spi_device_handle_t *device);
-
-// rhjr: TODO writing and reading from MCP2515
-//internal void pvc_spitcan_u32_read  (spi_device_handle_t device);
-//internal void pvc_spitcan_u32_write (spi_device_handle_t device);
 
 #endif /* PVC_SPITCAN_H */
 // spitcan.h ends here.

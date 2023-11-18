@@ -50,6 +50,16 @@ _pvc_monitor_assert (
 void
 app_main (void)
 {
-  LOG(TAG_PLATFORM, INFO, "Initializing");
+  LOG(TAG_PLATFORM, INFO, "Ready.");
   pvc_spitcan_initalize(PVC_SPI_PIN);
+
+  uint8_t data[4] = { 0x00, 0xFF, 0x00, 0xFF }; 
+
+  pvc_spitcan_message frame = {
+    .id              = 0x00,
+    .length_in_bytes = 0x04,
+    .data            = data
+  };
+
+  pvc_spitcan_write_message(&mcp2515, &frame, LOW_PRIORITY);
 }

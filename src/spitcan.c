@@ -26,7 +26,7 @@ pvc_mcp2515_set_mode (mcp_mode mode)
 
   esp_err_t result;
   //- rhjr: message 
-  mcp_register canctrl       = REGISTER_CANCTRL;
+  pvc_mcp_register canctrl   = REGISTER_CANCTRL;
   uint8_t canctrl_reqop_mask = 0xE0;  
   //- rhjr: transaction
   spi_transaction_t transaction = {};
@@ -98,7 +98,7 @@ pvc_spitcan_initalize (spi_host_device_t spi_host)
   
   //- rhjr: initializing mcp2515
   LOG(TAG_SPI, INFO, "  - Initializing MCP2515...");
-  LOG(TAG_SPI, INFO, "    + Adding device to SPI bus");
+  LOG(TAG_SPI, INFO, "    + Adding MCP2515 to the SPI bus");
 
   pvc_spitcan_add_device(spi_host, &mcp2515);
 
@@ -108,52 +108,147 @@ pvc_spitcan_initalize (spi_host_device_t spi_host)
   pvc_mcp2515_set_mode(MODE_NORMAL);
 
   ASSERT(result == ESP_OK, "Unexpected result, error code: %d", result);
+  LOG(TAG_SPI, INFO, "Spitcan succesfully initialized.");
   return;
 }
 
-//internal esp_err_t
-//pvc_spitcan_write (
-//  spi_device_handle_t device, const uint8_t *data, uint32_t length_in_bytes)
-//{
-//  ASSERT(length_in_bytes > 0, "expected at least a length of 1");
-//
-//  esp_err_t result;
-//
-//  //- rhjr: SPI transaction
-//  spi_transaction_t transaction = {0};
-//  transaction.tx_buffer = data;
-//  transaction.length    = length_in_bytes * 8; 
-//
-//  result = // rhjr: blocks until transaction is completed.
-//    spi_device_transmit(device, &transaction);
-//
-//  ASSERT(result == ESP_OK, "Unexpected result");
-//  LOG(TAG_SPI, INFO, "%s", "Message succesfully send");
-//  return result;
-//}
-//
-//esp_err_t pvc_spitcan_read (
-//  spi_device_handle_t device, uint8_t *data, uint32_t length_in_bytes)
-//{
-//  ASSERT(length_in_bytes > 0, "expected at least a length of 1");
-//
-//  esp_err_t result;
-//
-//  //- rhjr: SPI transaction
-//  spi_transaction_t transaction = {0};
-//  transaction.flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA;
-//
-//  // rhjr: MCP2515-manual Figure 12-2 p. 68
-//  transaction.length     =   24;
-//  transaction.tx_data[0] = 0x03;   
-//  transaction.tx_data[1] = 0x66;
-//  transaction.tx_data[2] = 0x00;
-//  transaction.rx_buffer  = data;
-//
-//  result = // rhjr: blocks until transaction is completed.
-//    spi_device_polling_transmit(device, &transaction);
-//
-//  ASSERT(result == ESP_OK, "Unexpected result");
-//  LOG(TAG_SPI, INFO, "Message succesfully received");
-//  return result;
-//}
+internal void
+pvc_spitcan_message_set_identification (
+  uint8_t *sidn_buffer, pvc_spitcan_message *frame)
+{
+  // rhjr: The frame identifier is a 12-bit field. Where there is a 11-bit field
+  //       for the identification and a 1-bit field for an unused flag.
+  uint16_t identifier = (uint16_t)(frame->id & 0x0FFFF);
+
+  // rhjr: Use standard frame format for the CAN-protocol.
+  identifier &= PVC_CAN_SFF_MASK;
+
+  *sidn_buffer++ = identifier >> 3;
+  *sidn_buffer = (identifier & 0x07) << 5;
+
+  LOG(TAG_SPI, INFO, "SIDL register dump: %u", *sidn_buffer-- );
+  LOG(TAG_SPI, INFO, "SIDH register dump: %u", *sidn_buffer);
+}
+
+internal uint8_t
+pvc_spitcan_read_from_register (const pvc_mcp_register _register)
+{
+  esp_err_t result;
+
+  //- rhjr: transaction
+  spi_transaction_t transaction = {0};
+  transaction.flags  = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA;
+  transaction.length = 24;
+
+  transaction.tx_data[0] = INSTRUCTION_READ;
+  transaction.tx_data[1] = _register;
+
+  //- rhjr: transmission
+  result = spi_device_transmit(mcp2515, &transaction);
+
+  if (result != ESP_OK)
+    LOG(TAG_SPI, ERROR, "Transmission failed, error code: %u", result); 
+
+  return transaction.rx_data[2];
+}
+
+internal esp_err_t pvc_spitcan_write_to_register (
+  const pvc_mcp_register _register, const uint8_t mask, const uint8_t data)
+{
+  esp_err_t result;
+
+  //- rhjr: transaction
+  spi_transaction_t transaction = {0};
+  transaction.flags     = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA;
+  transaction.length    = 32; 
+
+  transaction.tx_data[0] = INSTRUCTION_BITMOD;
+  transaction.tx_data[1] = _register;
+  transaction.tx_data[2] = mask;
+  transaction.tx_data[3] = data;
+
+  result = 
+    spi_device_transmit(mcp2515, &transaction);
+
+  if (result != ESP_OK)
+  LOG(TAG_SPI, ERROR, "Writing message to MCP2515 failed");
+
+  return result;
+}
+
+internal esp_err_t pvc_spitcan_write_to_registers (
+  const pvc_mcp_register _register, const uint8_t *data,
+  const uint8_t length_in_bytes)
+{
+  esp_err_t result;
+
+  //- rhjr: transaction
+  spi_transaction_t transaction = {0};
+  transaction.flags     = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA;
+  transaction.length    = 32; 
+
+  transaction.tx_data[0] = INSTRUCTION_BITMOD;
+  transaction.tx_data[1] = _register;
+
+  for (uint8_t index = 0; index < length_in_bytes; index += 1)
+  {
+    transaction.tx_data[index + 2] = *data++;
+  }
+
+  //- rhjr: transmission
+  result = spi_device_transmit(mcp2515, &transaction);
+
+  if (result != ESP_OK)
+  LOG(TAG_SPI, ERROR, "Writing message to MCP2515 failed");
+
+  return result;
+}
+
+internal esp_err_t pvc_spitcan_write_message (
+  spi_device_handle_t *device, pvc_spitcan_message *frame,
+  pvc_spitcan_message_priority priority)
+{
+  ASSERT(frame->length_in_bytes <= 0x04,
+    "Spitcan message exceeds the 4 byte limit.");
+  ASSERT(priority < MAX_PRIORITY, "Unkown spitcan priority: %d", priority);
+
+  esp_err_t result = ESP_FAIL; // assumes failed transmission. 
+
+  //- rhjr: message information
+  // MCP2515-manual: MESSAGE TRANSMISSION pg. 15
+
+  // rhjr: message transmit request
+  pvc_spitcan_write_to_register(REGISTER_TXB0CTRL, TXB_TXREQ, TXB_TXREQ);
+
+  // rhjr: message priority -> low priority
+  pvc_spitcan_write_to_register(REGISTER_TXB0CTRL, TXB_TXP, 0x01);
+
+  //- rhjr: message identification
+  uint8_t txb_sidn[2] = {0}; 
+  pvc_spitcan_message_set_identification(txb_sidn, frame);
+
+  pvc_spitcan_write_to_register(REGISTER_TXB0SIDH, 0xFF, txb_sidn[0]);
+  pvc_spitcan_write_to_register(REGISTER_TXB0SIDL, 0xFF, txb_sidn[1]);
+
+  //- rhjr: message data
+  //pvc_spitcan_write_to_registers( // rhjr: 5 byte offset from identification.  
+  //REGISTER_TXB0SIDH, 69, frame->length_in_bytes + 5); 
+  
+  //- rhjr: message status confirmation
+  uint8_t status_txb_ctrl =
+    pvc_spitcan_read_from_register(REGISTER_TXB0CTRL);
+
+  // rhjr: check if error bits are set.
+  if ((status_txb_ctrl & (TXB_ABTF | TXB_MLOA | TXB_TXERR)) != 0)
+  {
+    LOG(TAG_SPI, ERROR,
+      "Writing message to MCP2515 failed, register dump: %d", status_txb_ctrl);
+    result = ESP_ERR_INVALID_RESPONSE;
+  }
+  else
+  {
+    LOG(TAG_SPI, INFO, "Message succesfully send...");
+  }
+  
+  return result;
+}
