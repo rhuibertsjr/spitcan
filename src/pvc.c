@@ -53,6 +53,23 @@ app_main (void)
   LOG(TAG_PLATFORM, INFO, "Ready.");
   pvc_spitcan_initalize(PVC_SPI_PIN);
 
+#if 1
+  pvc_spitcan_message frame = {0};
+
+  for(;;)
+  {
+    if (pvc_spitcan_read_message(&frame, mcp2515) == ESP_OK)
+    {
+      LOG(TAG_SPI, INFO,
+        "Message = {\n\tid = %u\n\tlength_in_bytes = %u\n\tdata = %u\n}\n",
+        frame.id, frame.length_in_bytes, frame.data); 
+    }
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
+
+#endif
+
+#if 0
   uint8_t data[4] = { 0x00, 0xFF, 0x00, 0xFF }; 
 
   pvc_spitcan_message frame = {
@@ -62,4 +79,5 @@ app_main (void)
   };
 
   pvc_spitcan_write_message(&mcp2515, &frame, LOW_PRIORITY);
+#endif
 }

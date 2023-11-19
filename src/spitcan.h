@@ -38,9 +38,17 @@ typedef enum pvc_mcp_register pvc_mcp_register;
 enum pvc_mcp_register
 {
   REGISTER_CANCTRL  = 0x0F,
+
   REGISTER_TXB0CTRL = 0x30, 
   REGISTER_TXB0SIDH = 0x31, 
-  REGISTER_TXB0SIDL = 0x32 
+  REGISTER_TXB0SIDL = 0x32, 
+
+  REGISTER_RXB0SIDH = 0x61, 
+  REGISTER_RXB0SIDL = 0x62, 
+  REGISTER_RXB0DLC  = 0x65, 
+  REGISTER_RXB0DM   = 0x66,
+
+  REGISTER_CANINTF  = 0x2C
 };
 
 typedef enum mcp_mode mcp_mode;

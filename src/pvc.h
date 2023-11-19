@@ -75,7 +75,7 @@ _pvc_monitor_stdout_log(
       STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)
 #  define DEBUG(message, ...)                                                  \
       STATEMENT(_pvc_monitor_stdout_log(                                       \
-  TAG_NONE, INFO, message, ##__VA_ARGS__);)
+  TAG_NONE, WARNING, message, ##__VA_ARGS__);)
 #else
 #  define LOG(tag, type, message, ...)
 #  define DEBUG(tag, type, message, ...)
