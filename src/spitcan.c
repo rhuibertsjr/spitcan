@@ -146,9 +146,8 @@ pvc_spitcan_read_register(const pvc_mcp_register _register, uint8_t *data)
   transaction.tx_data[2] = 0x00;
 
   //- rhjr: transmission
-  result = spi_device_transmit(mcp2515, &transaction);
-
-  DEBUG("%u", transaction.rx_data[2]);
+  result = spi_device_polling_transmit(mcp2515, &transaction);
+  memcpy(data, &transaction.rx_data[2], sizeof(uint8_t));
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -176,7 +175,7 @@ pvc_spitcan_read_registers (
   transaction.rx_buffer = rx_message;
 
   //- rhjr: transmission
-  result = spi_device_transmit(mcp2515, &transaction);
+  result = spi_device_polling_transmit(mcp2515, &transaction);
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
     *data++ = rx_message[index + 2];
@@ -230,7 +229,7 @@ pvc_spitcan_set_registers(
   transaction.tx_buffer = message;
 
   //- rhjr: transmission
-  result = spi_device_transmit(mcp2515, &transaction);
+  result = spi_device_polling_transmit(mcp2515, &transaction);
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -253,21 +252,21 @@ pvc_spitcan_modify_register(
   transaction.tx_data[3] = data;
 
   //- rhjr: transmission
-  result = spi_device_transmit(mcp2515, &transaction);
+  result = spi_device_polling_transmit(mcp2515, &transaction);
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
 }
 
-//= rhjr: spitcan can messaging
+//= rhjr: spitcan message frame
 
 internal void
-pvc_spitcan_message_set_identification (
+pvc_spitcan_set_message_identification (
   uint8_t *sidn_buffer, pvc_spitcan_message *frame)
 {
   // rhjr: The frame identifier is a 12-bit field. Where there is a 11-bit field
   //       for the identification and a 1-bit field for an unused flag.
-  uint16_t identifier = (uint16_t)(frame->id & 0x0FFFF);
+  uint16_t identifier = (uint16_t)(frame->identifier & 0x0FFFF);
 
   // rhjr: Use standard frame format for the CAN-protocol.
   identifier &= PVC_CAN_SFF_MASK;
@@ -275,28 +274,57 @@ pvc_spitcan_message_set_identification (
   *sidn_buffer++ = identifier >> 3;
   *sidn_buffer = (identifier & 0x07) << 5;
 
+#if 0
   LOG(TAG_SPI, INFO, "SIDL register dump: %u", *sidn_buffer-- );
   LOG(TAG_SPI, INFO, "SIDH register dump: %u", *sidn_buffer);
+#endif
 }
-
-//= rhjr: spitcan message frame
 
 internal esp_err_t pvc_spitcan_write_message (
   spi_device_handle_t *device, pvc_spitcan_message *frame,
   pvc_spitcan_message_priority priority)
 {
-  ASSERT(frame->length_in_bytes <= 0x04,
-    "Spitcan message exceeds the 4 byte limit.");
   ASSERT(priority < MAX_PRIORITY, "Unkown spitcan priority: %d", priority);
 
-  esp_err_t result = ESP_FAIL; // assumes failed transmission. 
+  esp_err_t result = ESP_FAIL; // rhjr: assumes failed transmission. 
 
   //- rhjr: message information
   // MCP2515-manual: MESSAGE TRANSMISSION pg. 15
 
+  // rhjr: set message identification
+  uint8_t txb_sidn_buffer[2] = {0}; 
+  pvc_spitcan_set_message_identification(txb_sidn_buffer, frame);
+
+  pvc_spitcan_set_register(REGISTER_TXB0SIDH, txb_sidn_buffer[0]);
+  pvc_spitcan_set_register(REGISTER_TXB0SIDL, txb_sidn_buffer[1]);
+
+  // rhjr: fill message with data
+  uint8_t data = 0;
+  memcpy(&data, frame->data, frame->length_in_bytes);
+
+  pvc_spitcan_set_register(REGISTER_TXB0DM, data);
+  pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x0F, frame->length_in_bytes);
+
   // rhjr: request for transmission 
+  pvc_spitcan_modify_register(REGISTER_TXB0CTRL, TXB_TXP,   priority);
   pvc_spitcan_modify_register(REGISTER_TXB0CTRL, TXB_TXREQ, TXB_TXREQ);
   
+  // rhjr: clear interrupt
+  pvc_spitcan_set_register(REGISTER_CANINTE, 0x0);
+
+#if 1
+  uint8_t tx_ctrl = 0;
+  uint8_t tx_data = 0;
+  uint8_t tx_dlc = 0;
+
+  pvc_spitcan_read_register(REGISTER_TXB0CTRL, &tx_ctrl);
+  pvc_spitcan_read_register(REGISTER_TXB0DM, &tx_data);
+  pvc_spitcan_read_register(REGISTER_TXB0DLC, &tx_dlc);
+
+  DEBUG("Ctrl: %u\nData: %u\nDlc: %u", tx_ctrl, tx_data, tx_dlc);
+
+#endif
+
   //- rhjr: message status confirmation
   uint8_t status_txb_ctrl;
   pvc_spitcan_read_register(REGISTER_TXB0CTRL, &status_txb_ctrl);

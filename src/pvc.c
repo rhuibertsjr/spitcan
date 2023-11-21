@@ -1,6 +1,6 @@
 #include "pvc.h"
 
-//= rhjr: logging
+//= rhjr: logging, abort & assertions
 
 internal void
 _pvc_monitor_stdout_log(
@@ -17,8 +17,6 @@ _pvc_monitor_stdout_log(
   fprintf(stdout, "[DEBUG][%s] (%s) %s\n",
     _pvc_monitor_type_table[type], _pvc_monitor_tag_table[tag], message);
 }
-
-//= rhjr: abort & assertion
 
 internal _Noreturn uintptr_t
 _pvc_monitor_assert (
@@ -41,6 +39,8 @@ _pvc_monitor_assert (
   abort();
 }
 
+//= rhjr: application
+
 #include "spitcan.h"
 #include "spitcan.c"
 
@@ -49,5 +49,28 @@ app_main (void)
 {
   LOG(TAG_PLATFORM, INFO, "Ready.");
   pvc_spitcan_initalize(PVC_SPI_PIN);
-}
 
+#if 1
+  uint8_t data = 69;
+  pvc_spitcan_message message_frame = {
+    .identifier      = 0xFF,
+    .length_in_bytes = BYTES(1),
+    .data            = &data 
+  };
+
+  while(1)
+  {
+    pvc_spitcan_write_message(&mcp2515, &message_frame, LOW_PRIORITY);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+
+#else 0
+  pvc_spitcan_device_set_mode(mcp2515, MODE_LISTEN);
+
+  while(1)
+  {
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+
+#endif
+}

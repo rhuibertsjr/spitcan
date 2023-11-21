@@ -3,11 +3,12 @@
 
 //= rhjr: spitcan helpers
 
-#define BYTES(x) (x * 8) 
+#define BYTES(x) ((x * 8)) 
+#define MHZ(x) ((x * 1000000))
 
 //= rhjr: serial peripheral interface
 
-#define PVC_SPI_SCK_FREQ SPI_MASTER_FREQ_10M 
+#define PVC_SPI_SCK_FREQ MHZ(8)  
 
 #define PVC_SPI_PIN      HSPI_HOST   /* rhjr: SPI1_HOST is reserved.          */
 #define PVC_SPI_PIN_SCK  GPIO_NUM_14
@@ -88,7 +89,7 @@ enum pvc_mcp_register_TXnCTRL
 typedef struct pvc_spitcan_message pvc_spitcan_message;
 struct pvc_spitcan_message
 {
-  uint32_t id;
+  uint32_t identifier;
   uint8_t length_in_bytes;
   uint8_t *data;
 };
@@ -126,6 +127,14 @@ internal esp_err_t pvc_spitcan_read_registers (
 //       MCP2515-manual.
 internal esp_err_t pvc_spitcan_modify_register(
   const pvc_mcp_register _register, const uint8_t mask, uint8_t data);
+
+//- rhjr: spitcan message frame
+
+internal void pvc_spitcan_set_message_identification (
+  uint8_t *sidn_buffer, pvc_spitcan_message *frame);
+
+internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
+  pvc_spitcan_message *frame, pvc_spitcan_message_priority priority);
 
 #endif /* PVC_SPITCAN_H */
 // spitcan.h ends here.
