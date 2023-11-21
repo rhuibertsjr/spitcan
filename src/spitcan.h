@@ -57,8 +57,8 @@ enum pvc_mcp_register
   REGISTER_CANINTF  = 0x2C
 };
 
-typedef enum mcp_mode mcp_mode;
-enum mcp_mode
+typedef enum pvc_mcp_mode pvc_mcp_mode;
+enum pvc_mcp_mode
 {
   MODE_NORMAL = 0x00,
   MODE_SLEEP,
@@ -67,6 +67,8 @@ enum mcp_mode
   MODE_CONFIG,
   MODE_MAX    
 };
+
+#define PVC_SPITCAN_TXnCTRL_SIZE 14
 
 typedef enum pvc_mcp_register_TXnCTRL pvc_mcp_register_TXnCTRL;
 enum pvc_mcp_register_TXnCTRL
@@ -91,31 +93,39 @@ struct pvc_spitcan_message
   uint8_t *data;
 };
 
-//= rhjr: mcp2515 interface
-
-internal esp_err_t pvc_mcp2515_reset    (spi_device_handle_t *device);
-internal esp_err_t pvc_mcp2515_set_mode (mcp_mode mode);
-
 //= rhjr: spitcan interface
 
-internal esp_err_t pvc_spitcan_initalize (spi_host_device_t spi_host);
+internal esp_err_t pvc_spitcan_initalize (spi_host_device_t host_device);
 
 internal esp_err_t pvc_spitcan_add_device (
-  spi_host_device_t host, spi_device_handle_t *device);
+  spi_host_device_t host_device, spi_device_handle_t *device);
 internal esp_err_t pvc_spitcan_reset_device (
-  spi_host_device_t host);
+  spi_device_handle_t device);
+
+//- rhjr: spitcan state
+
+internal esp_err_t pvc_spitcan_device_set_mode (
+  spi_device_handle_t device, pvc_mcp_mode mode);
 
 //- rhjr: spitcan register manipulation
 
-internal esp_err_t pvc_spitcan_set_register(
+internal esp_err_t pvc_spitcan_set_register (
   const pvc_mcp_register _register, const uint8_t value);
 
-internal esp_err_t pvc_spitcan_set_registers(
+internal esp_err_t pvc_spitcan_set_registers (
   const pvc_mcp_register _register, const uint8_t *data,
   const uint8_t length_in_bytes);
 
-internal esp_err_t pvc_spitcan_read_register(
+internal esp_err_t pvc_spitcan_read_register (
+  const pvc_mcp_register _register, uint8_t *data);
+
+internal esp_err_t pvc_spitcan_read_registers (
   const pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes);
+
+// rhjr: Note not all registers can be modified, see which are available in the
+//       MCP2515-manual.
+internal esp_err_t pvc_spitcan_modify_register(
+  const pvc_mcp_register _register, const uint8_t mask, uint8_t data);
 
 #endif /* PVC_SPITCAN_H */
 // spitcan.h ends here.
