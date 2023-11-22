@@ -61,6 +61,11 @@ enum pvc_mcp_register
   REGISTER_CANF3    = 0x28,
   REGISTER_CANF2    = 0x29,
   REGISTER_CANF1    = 0x2A,
+
+  // rhjr: error flags
+  REGISTER_EFLG     = 0x2D,
+  REGISTER_TEC      = 0x1C,
+  REGISTER_REC      = 0x1D
 };
 
 typedef enum pvc_mcp_mode pvc_mcp_mode;

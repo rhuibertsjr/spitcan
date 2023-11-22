@@ -34,10 +34,10 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
 
   LOG(TAG_SPI, INFO, "    + Configuring MCP2515");
 
+  pvc_spitcan_device_set_mode(mcp2515, MODE_CONFIG);
   pvc_spitcan_reset_device(mcp2515);
   
   // rhjr: set MCP2515 transmission speed.
-  pvc_spitcan_device_set_mode(mcp2515, MODE_CONFIG);
   pvc_spitcan_set_register(REGISTER_CANF1, 0x01);
   pvc_spitcan_set_register(REGISTER_CANF2, 0xBF);
   pvc_spitcan_set_register(REGISTER_CANF3, 0x87);
@@ -104,6 +104,11 @@ pvc_spitcan_reset_device (spi_device_handle_t device)
 
   // rhjr: clear interupts flags
   pvc_spitcan_set_register(REGISTER_CANINTE, 0);
+
+  // rhjr: 
+  const uint8_t turn_off_filters = 96;
+  pvc_spitcan_modify_register(
+    REGISTER_RXB0CTRL, turn_off_filters, turn_off_filters);
 
   ASSERT(result == ESP_OK, "Unexpected result, error code: %d", result);
   return result;
@@ -291,9 +296,10 @@ internal esp_err_t pvc_spitcan_write_message (
 
   if ((received_message & TXB_TXREQ) == TXB_TXREQ)
   {
-    LOG(TAG_SPI, WARNING, "Message already queued.");
+    LOG(TAG_SPI, WARNING, "Message queue is full.");
     return ESP_ERR_INVALID_SIZE;
   }
+
   LOG(TAG_SPI, WARNING, "Sending message");
 
   //- rhjr: message information
@@ -311,7 +317,7 @@ internal esp_err_t pvc_spitcan_write_message (
   memcpy(&data, frame->data, frame->length_in_bytes);
 
   pvc_spitcan_set_register(REGISTER_TXB0DM, data);
-  pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x0F, frame->length_in_bytes);
+  pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x4F, frame->length_in_bytes);
 
   // rhjr: request for transmission 
   pvc_spitcan_modify_register(REGISTER_TXB0CTRL, TXB_TXP,   priority);
@@ -330,6 +336,10 @@ internal esp_err_t pvc_spitcan_write_message (
     LOG(TAG_SPI, ERROR,
       "Writing message to MCP2515 failed, register dump: %d", status_txb_ctrl);
     result = ESP_ERR_INVALID_RESPONSE;
+    
+    uint8_t error_flags;
+    pvc_spitcan_read_register(REGISTER_EFLG, &error_flags);
+    DEBUG("ERROR EFLG: %u", error_flags);
   }
 
   return result;
@@ -358,7 +368,10 @@ pvc_spitcan_read_message (
 
   //- rhjr: identifier reconstruction
   uint8_t identifier_fragments[2];
-  pvc_spitcan_read_registers(REGISTER_RXB0SIDH, identifier_fragments, 2);
+  pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[0]);
+  pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[1]);
+
+  // rhjr: TODO should use pvc_spitcan_read_registers(), as a single call.
 
   identifier = (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
 
@@ -375,8 +388,12 @@ pvc_spitcan_read_message (
   }
 
   //- rhjr: received data
-  pvc_spitcan_read_registers(
-    REGISTER_RXB0DM, destination->data, amount_of_received_bytes);
+  uint8_t received_data = 0;
+  pvc_spitcan_read_register(REGISTER_RXB0DM, &received_data);
+
+  // rhjr: TODO allow larger transactions of data, pvc_spitcan_read_registers();
+
+  memcpy(destination->data, &received_data, sizeof(uint8_t));
 
   //- rhjr: can-frame reconstruction
   destination->identifier = identifier;

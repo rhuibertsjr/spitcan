@@ -50,21 +50,26 @@ app_main (void)
   LOG(TAG_PLATFORM, INFO, "Ready.");
   pvc_spitcan_initalize(PVC_SPI_PIN);
 
-#if 1
+  #if 0
   uint8_t data = 69;
   pvc_spitcan_message message_frame = {
-    .identifier      = 69,
+    .identifier      = 72,
     .length_in_bytes = 1,
     .data            = &data 
   };
 
   while(1)
   {
+    LOG(TAG_SPI, INFO,
+      "Spitcan message = {\n\tidentifier: %u,\n\tlength: %u,\n\tdata: %u\n}",
+      message_frame.identifier, message_frame.length_in_bytes,
+      *message_frame.data);
+
     pvc_spitcan_write_message(&mcp2515, &message_frame, LOW_PRIORITY);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 
-#else 
+  #else 
 
   uint8_t data[32] = {0};
   pvc_spitcan_message message_frame = {0};
@@ -73,6 +78,8 @@ app_main (void)
   while(1)
   {
     pvc_spitcan_read_message(&message_frame, mcp2515);
+    LOG(TAG_SPI, INFO,
+      "Received spitcan message");
     LOG(TAG_SPI, INFO,
       "Spitcan message = {\n\tidentifier: %u,\n\tlength: %u,\n\tdata: %u\n}",
       message_frame.identifier, message_frame.length_in_bytes,
