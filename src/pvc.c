@@ -53,23 +53,32 @@ app_main (void)
 #if 1
   uint8_t data = 69;
   pvc_spitcan_message message_frame = {
-    .identifier      = 0xFF,
-    .length_in_bytes = BYTES(1),
+    .identifier      = 69,
+    .length_in_bytes = 1,
     .data            = &data 
   };
 
   while(1)
   {
     pvc_spitcan_write_message(&mcp2515, &message_frame, LOW_PRIORITY);
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 
-#else 0
-  pvc_spitcan_device_set_mode(mcp2515, MODE_LISTEN);
+#else 
+
+  uint8_t data[32] = {0};
+  pvc_spitcan_message message_frame = {0};
+  message_frame.data = &data[0];
 
   while(1)
   {
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    pvc_spitcan_read_message(&message_frame, mcp2515);
+    LOG(TAG_SPI, INFO,
+      "Spitcan message = {\n\tidentifier: %u,\n\tlength: %u,\n\tdata: %u\n}",
+      message_frame.identifier, message_frame.length_in_bytes,
+      *message_frame.data);
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 
 #endif

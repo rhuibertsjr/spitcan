@@ -41,6 +41,7 @@ typedef enum pvc_mcp_register pvc_mcp_register;
 enum pvc_mcp_register
 {
   REGISTER_CANCTRL  = 0x0F,
+  REGISTER_CANSTAT  = 0x0E,
 
   REGISTER_TXB0CTRL = 0x30, 
   REGISTER_TXB0SIDH = 0x31, 
@@ -55,7 +56,11 @@ enum pvc_mcp_register
   REGISTER_RXB0DM   = 0x66,
 
   REGISTER_CANINTE  = 0x2B,
-  REGISTER_CANINTF  = 0x2C
+  REGISTER_CANINTF  = 0x2C,
+
+  REGISTER_CANF3    = 0x28,
+  REGISTER_CANF2    = 0x29,
+  REGISTER_CANF1    = 0x2A,
 };
 
 typedef enum pvc_mcp_mode pvc_mcp_mode;
@@ -135,6 +140,9 @@ internal void pvc_spitcan_set_message_identification (
 
 internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
   pvc_spitcan_message *frame, pvc_spitcan_message_priority priority);
+
+internal esp_err_t pvc_spitcan_read_message (
+  pvc_spitcan_message *destination, spi_device_handle_t device);
 
 #endif /* PVC_SPITCAN_H */
 // spitcan.h ends here.

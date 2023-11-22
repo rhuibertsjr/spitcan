@@ -35,6 +35,13 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
   LOG(TAG_SPI, INFO, "    + Configuring MCP2515");
 
   pvc_spitcan_reset_device(mcp2515);
+  
+  // rhjr: set MCP2515 transmission speed.
+  pvc_spitcan_device_set_mode(mcp2515, MODE_CONFIG);
+  pvc_spitcan_set_register(REGISTER_CANF1, 0x01);
+  pvc_spitcan_set_register(REGISTER_CANF2, 0xBF);
+  pvc_spitcan_set_register(REGISTER_CANF3, 0x87);
+
   pvc_spitcan_device_set_mode(mcp2515, MODE_NORMAL);
 
   ASSERT(result == ESP_OK, "Unexpected result, error code: %d", result);
@@ -106,24 +113,12 @@ internal esp_err_t
 pvc_spitcan_device_set_mode (spi_device_handle_t host, pvc_mcp_mode mode)
 {
   ASSERT(mode < MODE_MAX, "Mode %u is not available.", mode);
-  esp_err_t result;
 
-  //- rhjr: message 
+  esp_err_t result;
   uint8_t canctrl_reqop_mask = 0xE0;  
 
-  //- rhjr: transaction
-  spi_transaction_t transaction = {};
-  transaction.flags = SPI_TRANS_USE_RXDATA | SPI_TRANS_USE_TXDATA;
-  transaction.length = BYTES(4);
-
-  transaction.tx_data[0] = INSTRUCTION_WRITE;
-  transaction.tx_data[1] = REGISTER_CANCTRL;
-  transaction.tx_data[2] = canctrl_reqop_mask;
-  transaction.tx_data[3] = mode;
-
-  //- rhjr: transmission
-  result = // rhjr: blocks until transaction is completed.
-    spi_device_polling_transmit(mcp2515, &transaction);
+  result = pvc_spitcan_modify_register(
+    REGISTER_CANCTRL, canctrl_reqop_mask, mode);
 
   ASSERT(result == ESP_OK, "Unexpected result, error code: %d", result);
   return result;
@@ -175,10 +170,12 @@ pvc_spitcan_read_registers (
   transaction.rx_buffer = rx_message;
 
   //- rhjr: transmission
+  uint8_t *data_temp = data;
+
   result = spi_device_polling_transmit(mcp2515, &transaction);
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-    *data++ = rx_message[index + 2];
+    memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -288,6 +285,17 @@ internal esp_err_t pvc_spitcan_write_message (
 
   esp_err_t result = ESP_FAIL; // rhjr: assumes failed transmission. 
 
+  //- rhjr: check transmission buffer
+  uint8_t received_message = 0;
+  pvc_spitcan_read_register(REGISTER_TXB0CTRL, &received_message);
+
+  if ((received_message & TXB_TXREQ) == TXB_TXREQ)
+  {
+    LOG(TAG_SPI, WARNING, "Message already queued.");
+    return ESP_ERR_INVALID_SIZE;
+  }
+  LOG(TAG_SPI, WARNING, "Sending message");
+
   //- rhjr: message information
   // MCP2515-manual: MESSAGE TRANSMISSION pg. 15
 
@@ -312,19 +320,6 @@ internal esp_err_t pvc_spitcan_write_message (
   // rhjr: clear interrupt
   pvc_spitcan_set_register(REGISTER_CANINTE, 0x0);
 
-#if 1
-  uint8_t tx_ctrl = 0;
-  uint8_t tx_data = 0;
-  uint8_t tx_dlc = 0;
-
-  pvc_spitcan_read_register(REGISTER_TXB0CTRL, &tx_ctrl);
-  pvc_spitcan_read_register(REGISTER_TXB0DM, &tx_data);
-  pvc_spitcan_read_register(REGISTER_TXB0DLC, &tx_dlc);
-
-  DEBUG("Ctrl: %u\nData: %u\nDlc: %u", tx_ctrl, tx_data, tx_dlc);
-
-#endif
-
   //- rhjr: message status confirmation
   uint8_t status_txb_ctrl;
   pvc_spitcan_read_register(REGISTER_TXB0CTRL, &status_txb_ctrl);
@@ -336,6 +331,59 @@ internal esp_err_t pvc_spitcan_write_message (
       "Writing message to MCP2515 failed, register dump: %d", status_txb_ctrl);
     result = ESP_ERR_INVALID_RESPONSE;
   }
+
+  return result;
+}
+
+internal esp_err_t
+pvc_spitcan_read_message (
+  pvc_spitcan_message *destination, spi_device_handle_t device)
+{
+  esp_err_t result = 1;
+
+  //- rhjr: check received buffer
+  uint8_t received_message = 0;
+  pvc_spitcan_read_register(REGISTER_CANINTF, &received_message);
+
+  if (!received_message)
+  {
+    LOG(TAG_SPI, WARNING, "Received message buffer is empty.");
+    return ESP_ERR_INVALID_SIZE;
+  }
+
+  pvc_spitcan_device_set_mode(mcp2515, MODE_NORMAL);
+
+  uint32_t identifier;
+  uint8_t amount_of_received_bytes;
+
+  //- rhjr: identifier reconstruction
+  uint8_t identifier_fragments[2];
+  pvc_spitcan_read_registers(REGISTER_RXB0SIDH, identifier_fragments, 2);
+
+  identifier = (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
+
+  //- rhjr: amount of bytes received
+  const uint8_t dlc_mask = 0x0F;
+  pvc_spitcan_read_register(REGISTER_RXB0DLC, &amount_of_received_bytes);
+
+  amount_of_received_bytes &= dlc_mask;
+
+  if (amount_of_received_bytes == 0)
+  {
+    result = ESP_ERR_INVALID_SIZE;
+    return result;
+  }
+
+  //- rhjr: received data
+  pvc_spitcan_read_registers(
+    REGISTER_RXB0DM, destination->data, amount_of_received_bytes);
+
+  //- rhjr: can-frame reconstruction
+  destination->identifier = identifier;
+  destination->length_in_bytes = amount_of_received_bytes;
+
+  // rhjr: clear the RXBn, to allow new messages.  
+  pvc_spitcan_modify_register(REGISTER_CANINTF, REGISTER_CANINTF, 0);
 
   return result;
 }
