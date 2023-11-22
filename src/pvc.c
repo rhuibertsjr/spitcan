@@ -1,48 +1,59 @@
 #include "pvc.h"
 
-//= rhjr: logging, abort & assertions
-
-internal void
-_pvc_monitor_stdout_log(
-  pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...)
-{
-  const uint8_t message_size = 128;
-  char message[message_size];
-  va_list args_list;
-
-  va_start(args_list, format);
-  vsnprintf(message, message_size, format, args_list);
-  va_end(args_list);
-
-  fprintf(stdout, "[DEBUG][%s] (%s) %s\n",
-    _pvc_monitor_type_table[type], _pvc_monitor_tag_table[tag], message);
-}
-
-internal _Noreturn uintptr_t
-_pvc_monitor_assert (
-  const char* condition, const char* file, const char* func, 
-  uint32_t line, const char *format, ...)
-{
-  const uint8_t message_size = 128;
-  char message[message_size];
-  va_list args_list;
-
-  va_start(args_list, format);
-  vsnprintf(message, message_size, format, args_list);
-  va_end(args_list);
-
-  fprintf(stderr, "[DEBUG][%s] (%s) \"%s\" at %s::%s() at %ld: %s.\n",
-    _pvc_monitor_type_table[ERROR], _pvc_monitor_tag_table[TAG_ASSERT],
-    condition, file, func, line, message);
-
-  fflush(stdout);
-  abort();
-}
-
-//= rhjr: application
+/* @brief: Project PVC (PVC's Vlow Control) is an experimental fluid management
+ *         system. Its purpose is to safely control the water levels from one 
+ *         tank to another. It has several safety features, and can be reliably
+ *         controlled from afar using Lorawan and CAN-bus as communication
+ *         systems. 
+ *
+ * @authors: Jeffrey van Velzen, Theironne Velliam, Sem Huits, and Rene Huiberts
+ * @date: 22 - 11 - 2023
+ */
 
 #include "spitcan.h"
 #include "spitcan.c"
+
+global_variable SemaphoreHandle_t message_buffer_semph;
+global_variable uint8_t message_buffer[1];
+
+internal void
+pvc_check_spitcan_transmissions(void *parameters)
+{
+  LOG(TAG_PLATFORM, INFO, "Listening for incoming messages...");
+
+  pvc_spitcan_message *message = (pvc_spitcan_message*) parameters;
+
+  TickType_t last_wake_time = xTaskGetTickCount();
+  TickType_t frequency = pdMS_TO_TICKS(2000);
+  TickType_t wait_time = pdMS_TO_TICKS(500);
+
+  while(1)
+  {
+    if (xSemaphoreTake(message_buffer_semph, wait_time))
+    {
+      if (pvc_spitcan_received_new_message())
+      {
+        pvc_spitcan_read_message(message, mcp2515);
+
+        LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u",
+          message->identifier, *message->data);
+      }
+      else
+        {
+          #if PVC_SPITCAN_DEBUG
+          LOG(TAG_SPITCAN, WARNING, "No message received...");
+#endif
+        }
+
+      xSemaphoreGive(message_buffer_semph);
+    }
+
+    vTaskDelayUntil(&last_wake_time, frequency);
+  }
+
+  ASSERT(false, "Shouldn't be reached."); 
+  return;
+}
 
 void
 app_main (void)
@@ -50,43 +61,23 @@ app_main (void)
   LOG(TAG_PLATFORM, INFO, "Ready.");
   pvc_spitcan_initalize(PVC_SPI_PIN);
 
-  #if 0
-  uint8_t data = 69;
-  pvc_spitcan_message message_frame = {
-    .identifier      = 72,
-    .length_in_bytes = 1,
-    .data            = &data 
-  };
+  // rhjr: TODO create a buffer, instead of a single message.
+
+  pvc_spitcan_message message = {0}; 
+  message.identifier = 69;
+  message.data = message_buffer;
+
+  message_buffer_semph = xSemaphoreCreateMutex();
+
+  xTaskCreate(pvc_check_spitcan_transmissions, "spitcan-periodic-rx0b-check",
+    4096, (void*) &message, 1, NULL);
 
   while(1)
   {
-    LOG(TAG_SPI, INFO,
-      "Spitcan message = {\n\tidentifier: %u,\n\tlength: %u,\n\tdata: %u\n}",
-      message_frame.identifier, message_frame.length_in_bytes,
-      *message_frame.data);
-
-    pvc_spitcan_write_message(&mcp2515, &message_frame, LOW_PRIORITY);
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // rhjr: delay is needed to prevent triggering the watchdog. 
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 
-  #else 
-
-  uint8_t data[32] = {0};
-  pvc_spitcan_message message_frame = {0};
-  message_frame.data = &data[0];
-
-  while(1)
-  {
-    pvc_spitcan_read_message(&message_frame, mcp2515);
-    LOG(TAG_SPI, INFO,
-      "Received spitcan message");
-    LOG(TAG_SPI, INFO,
-      "Spitcan message = {\n\tidentifier: %u,\n\tlength: %u,\n\tdata: %u\n}",
-      message_frame.identifier, message_frame.length_in_bytes,
-      *message_frame.data);
-
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-
-#endif
+  ASSERT(false, "Shouldn't be reached."); 
+  return;
 }

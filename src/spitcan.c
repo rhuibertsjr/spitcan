@@ -6,7 +6,7 @@ internal esp_err_t
 pvc_spitcan_initalize (spi_host_device_t host_device)
 {
   ASSERT(host_device < SPI_HOST_MAX, "Invalid SPI host.");
-  LOG(TAG_SPI, INFO, "Initializing Spitcan...");
+  LOG(TAG_SPITCAN, INFO, "Initializing Spitcan...");
 
   esp_err_t result;
 
@@ -25,14 +25,14 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
   ASSERT(result == ESP_OK, "Initializing the SPI bus failed.");
   
   //- rhjr: initializing mcp2515
-  LOG(TAG_SPI, INFO, "  - Initializing MCP2515...");
-  LOG(TAG_SPI, INFO, "    + Adding MCP2515 to the SPI bus");
+  LOG(TAG_SPITCAN, INFO, "  - Initializing MCP2515...");
+  LOG(TAG_SPITCAN, INFO, "    + Adding MCP2515 to the SPI bus");
 
   result = pvc_spitcan_add_device(host_device, &mcp2515);
 
   ASSERT(result == ESP_OK, "Adding the MCP2515 to the SPI bus failed.");
 
-  LOG(TAG_SPI, INFO, "    + Configuring MCP2515");
+  LOG(TAG_SPITCAN, INFO, "    + Configuring MCP2515");
 
   pvc_spitcan_device_set_mode(mcp2515, MODE_CONFIG);
   pvc_spitcan_reset_device(mcp2515);
@@ -45,7 +45,7 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
   pvc_spitcan_device_set_mode(mcp2515, MODE_NORMAL);
 
   ASSERT(result == ESP_OK, "Unexpected result, error code: %d", result);
-  LOG(TAG_SPI, INFO, "Spitcan succesfully initialized.");
+  LOG(TAG_SPITCAN, INFO, "Spitcan succesfully initialized.");
   return result;
 }
 
@@ -277,8 +277,8 @@ pvc_spitcan_set_message_identification (
   *sidn_buffer = (identifier & 0x07) << 5;
 
 #if 0
-  LOG(TAG_SPI, INFO, "SIDL register dump: %u", *sidn_buffer-- );
-  LOG(TAG_SPI, INFO, "SIDH register dump: %u", *sidn_buffer);
+  LOG(TAG_SPITCAN, INFO, "SIDL register dump: %u", *sidn_buffer-- );
+  LOG(TAG_SPITCAN, INFO, "SIDH register dump: %u", *sidn_buffer);
 #endif
 }
 
@@ -296,11 +296,11 @@ internal esp_err_t pvc_spitcan_write_message (
 
   if ((received_message & TXB_TXREQ) == TXB_TXREQ)
   {
-    LOG(TAG_SPI, WARNING, "Message queue is full.");
+    LOG(TAG_SPITCAN, WARNING, "Message queue is full.");
     return ESP_ERR_INVALID_SIZE;
   }
 
-  LOG(TAG_SPI, WARNING, "Sending message");
+  LOG(TAG_SPITCAN, WARNING, "Sending message");
 
   //- rhjr: message information
   // MCP2515-manual: MESSAGE TRANSMISSION pg. 15
@@ -333,7 +333,7 @@ internal esp_err_t pvc_spitcan_write_message (
   // rhjr: check if error bits are set.
   if ((status_txb_ctrl & (TXB_ABTF | TXB_MLOA | TXB_TXERR)) != 0)
   {
-    LOG(TAG_SPI, ERROR,
+    LOG(TAG_SPITCAN, ERROR,
       "Writing message to MCP2515 failed, register dump: %d", status_txb_ctrl);
     result = ESP_ERR_INVALID_RESPONSE;
     
@@ -350,18 +350,6 @@ pvc_spitcan_read_message (
   pvc_spitcan_message *destination, spi_device_handle_t device)
 {
   esp_err_t result = 1;
-
-  //- rhjr: check received buffer
-  uint8_t received_message = 0;
-  pvc_spitcan_read_register(REGISTER_CANINTF, &received_message);
-
-  if (!received_message)
-  {
-    LOG(TAG_SPI, WARNING, "Received message buffer is empty.");
-    return ESP_ERR_INVALID_SIZE;
-  }
-
-  pvc_spitcan_device_set_mode(mcp2515, MODE_NORMAL);
 
   uint32_t identifier;
   uint8_t amount_of_received_bytes;
@@ -400,7 +388,25 @@ pvc_spitcan_read_message (
   destination->length_in_bytes = amount_of_received_bytes;
 
   // rhjr: clear the RXBn, to allow new messages.  
-  pvc_spitcan_modify_register(REGISTER_CANINTF, REGISTER_CANINTF, 0);
+  pvc_spitcan_set_register(REGISTER_CANINTF, 0x0);
 
   return result;
+}
+
+internal bool
+pvc_spitcan_received_new_message ()
+{
+  // rhjr: MCP2515-manual p. 54.
+
+  uint8_t result = 0;
+  uint8_t rxb0if_mask = 0x01;
+
+  pvc_spitcan_read_register(REGISTER_CANINTF, &result);
+
+  if ((result & rxb0if_mask) == 1)
+  {
+    return true;
+  }
+
+  return false;
 }

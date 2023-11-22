@@ -1,10 +1,16 @@
 #ifndef PVC_SPITCAN_H
 #define PVC_SPITCAN_H
 
+#ifndef PVC_SPITCAN_DEBUG
+#  define PVC_SPITCAN_DEBUG 0x0
+#endif
+
 //= rhjr: spitcan helpers
 
 #define BYTES(x) ((x * 8)) 
 #define MHZ(x) ((x * 1000000))
+
+#define pvc_spitcan_register_dump()
 
 //= rhjr: serial peripheral interface
 
@@ -148,6 +154,8 @@ internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
 
 internal esp_err_t pvc_spitcan_read_message (
   pvc_spitcan_message *destination, spi_device_handle_t device);
+
+internal bool pvc_spitcan_received_new_message ();
 
 #endif /* PVC_SPITCAN_H */
 // spitcan.h ends here.

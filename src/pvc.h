@@ -46,7 +46,8 @@ enum pvc_monitor_tag
   TAG_NONE      = 0x00,
   TAG_PLATFORM,
   TAG_ASSERT,
-  TAG_SPI
+  TAG_SPITCAN,
+  TAG_MSG
 };
 
 // rhjr: lookup tables
@@ -62,14 +63,27 @@ const char *_pvc_monitor_tag_table[] =
   [TAG_NONE]     = "DEBUG",
   [TAG_PLATFORM] = "Platform",
   [TAG_ASSERT]   = "ASSERTION",
-  [TAG_SPI]      = "SPI"
+  [TAG_SPITCAN]  = "Spitcan",
+  [TAG_MSG]      = "Message"
 };
 
 //- rhjr: logging
 
 internal void
 _pvc_monitor_stdout_log(
-  pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...);
+  pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...)
+{
+  const uint8_t message_size = 128;
+  char message[message_size];
+  va_list args_list;
+
+  va_start(args_list, format);
+  vsnprintf(message, message_size, format, args_list);
+  va_end(args_list);
+
+  fprintf(stdout, "[DEBUG][%s] (%s) %s\n",
+    _pvc_monitor_type_table[type], _pvc_monitor_tag_table[tag], message);
+}
 
 #if PVC_LOGGING
 #  define LOG(tag, type, message, ...)                                         \
@@ -86,8 +100,24 @@ _pvc_monitor_stdout_log(
 
 internal _Noreturn uintptr_t
 _pvc_monitor_assert (
-  const char* condition, const char* file, const char* func,
-  uint32_t line, const char *msg, ...);
+  const char* condition, const char* file, const char* func, 
+  uint32_t line, const char *format, ...)
+{
+  const uint8_t message_size = 128;
+  char message[message_size];
+  va_list args_list;
+
+  va_start(args_list, format);
+  vsnprintf(message, message_size, format, args_list);
+  va_end(args_list);
+
+  fprintf(stderr, "[DEBUG][%s] (%s) \"%s\" at %s::%s() at %ld: %s.\n",
+    _pvc_monitor_type_table[ERROR], _pvc_monitor_tag_table[TAG_ASSERT],
+    condition, file, func, line, message);
+
+  fflush(stdout);
+  abort();
+}
 
 #if PVC_ASSERT
 #  define ASSERT(condition, msg, ...)                                          \
