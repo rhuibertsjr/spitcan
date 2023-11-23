@@ -133,7 +133,8 @@ _pvc_monitor_assert (
 
 //= rhjr: paddle flow switch
 
-#define PVC_PFS_PIN GPIO_NUM_35
+#define PVC_PFS_ENABLE 0x0
+#define PVC_PFS_PIN    GPIO_NUM_35
 
 typedef enum pvc_pfs_state pvc_pfs_state;
 enum pvc_pfs_state
