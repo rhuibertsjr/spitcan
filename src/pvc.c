@@ -40,7 +40,7 @@ pvc_check_spitcan_transmissions(void *parameters)
       }
       else
         {
-          #if PVC_SPITCAN_DEBUG
+#if PVC_SPITCAN_DEBUG
           LOG(TAG_SPITCAN, WARNING, "No message received...");
 #endif
         }
@@ -53,6 +53,46 @@ pvc_check_spitcan_transmissions(void *parameters)
 
   ASSERT(false, "Shouldn't be reached."); 
   return;
+}
+
+internal pvc_pfs_state
+pvc_pfs_is_open()
+{
+  // rhjr: result is inverted, because the paddle flow switch is active HIGH.
+  pvc_pfs_state result =
+    !((pvc_pfs_state) gpio_get_level(PVC_PFS_PIN));
+  return result;
+}
+
+internal void
+pvc_pfs_main(UNUSED void *parameters)
+{
+  LOG(TAG_PFS, INFO, "Initalizing the paddle flow switch...")
+  TickType_t last_wake_time = xTaskGetTickCount();
+  TickType_t frequency = pdMS_TO_TICKS(1000);
+
+  gpio_config_t pfs_pin_config = 
+    {
+      .mode                = GPIO_MODE_INPUT,
+      .pin_bit_mask        = (1ULL << PVC_PFS_PIN),
+      .pull_up_en   = GPIO_PULLUP_ENABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type    = GPIO_INTR_DISABLE
+    };
+
+  gpio_config(&pfs_pin_config);
+
+  for (;;)
+  {
+    if (pvc_pfs_is_open())
+    {
+      // rhjr: water is flowing through the pvc.
+      LOG(TAG_PFS, INFO, "Emptying tank...");
+    }
+    
+    vTaskDelayUntil(&last_wake_time, frequency);
+  }
+
 }
 
 void
@@ -71,6 +111,8 @@ app_main (void)
 
   xTaskCreate(pvc_check_spitcan_transmissions, "spitcan-periodic-rx0b-check",
     4096, (void*) &message, 1, NULL);
+
+  xTaskCreate(pvc_pfs_main, "paddle-flow-switch-task", 4096, NULL, 1, NULL);
 
   while(1)
   {
