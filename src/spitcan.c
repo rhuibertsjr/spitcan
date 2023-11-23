@@ -300,8 +300,6 @@ internal esp_err_t pvc_spitcan_write_message (
     return ESP_ERR_INVALID_SIZE;
   }
 
-  LOG(TAG_SPITCAN, WARNING, "Sending message");
-
   //- rhjr: message information
   // MCP2515-manual: MESSAGE TRANSMISSION pg. 15
 

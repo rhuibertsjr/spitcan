@@ -82,12 +82,21 @@ pvc_pfs_main(UNUSED void *parameters)
 
   gpio_config(&pfs_pin_config);
 
+  uint8_t result = 0;
+  pvc_spitcan_message message =
+    {
+      .identifier      = 0xDB,
+      .length_in_bytes = 0x01,
+      .data            = &result
+    }; 
+
   for (;;)
   {
-    if (pvc_pfs_is_open())
+    if ((result = pvc_pfs_is_open()))
     {
       // rhjr: water is flowing through the pvc.
       LOG(TAG_PFS, INFO, "Emptying tank...");
+      pvc_spitcan_write_message(&mcp2515, &message, HIGH_INTM_PRIORITY);
     }
     
     vTaskDelayUntil(&last_wake_time, frequency);
@@ -104,7 +113,6 @@ app_main (void)
   // rhjr: TODO create a buffer, instead of a single message.
 
   pvc_spitcan_message message = {0}; 
-  message.identifier = 69;
   message.data = message_buffer;
 
   message_buffer_semph = xSemaphoreCreateMutex();
@@ -112,7 +120,9 @@ app_main (void)
   xTaskCreate(pvc_check_spitcan_transmissions, "spitcan-periodic-rx0b-check",
     4096, (void*) &message, 1, NULL);
 
+#if PVC_PFS_ENABLE
   xTaskCreate(pvc_pfs_main, "paddle-flow-switch-task", 4096, NULL, 1, NULL);
+#endif
 
   while(1)
   {
