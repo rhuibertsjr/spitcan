@@ -25,6 +25,7 @@
 
 #define internal static 
 #define global_variable static 
+#define UNUSED __attribute__((unused))
 
 //- rhjr: helper functions
 
@@ -47,7 +48,8 @@ enum pvc_monitor_tag
   TAG_PLATFORM,
   TAG_ASSERT,
   TAG_SPITCAN,
-  TAG_MSG
+  TAG_MSG,
+  TAG_PFS,
 };
 
 // rhjr: lookup tables
@@ -64,7 +66,8 @@ const char *_pvc_monitor_tag_table[] =
   [TAG_PLATFORM] = "Platform",
   [TAG_ASSERT]   = "ASSERTION",
   [TAG_SPITCAN]  = "Spitcan",
-  [TAG_MSG]      = "Message"
+  [TAG_MSG]      = "Message",
+  [TAG_PFS]      = "Paddle Flow Switch"
 };
 
 //- rhjr: logging
@@ -127,6 +130,21 @@ _pvc_monitor_assert (
 #else
 #  define ASSERT(condition, msg, ...)
 #endif
+
+//= rhjr: paddle flow switch
+
+#define PVC_PFS_ENABLE 0x0
+#define PVC_PFS_PIN    GPIO_NUM_35
+
+typedef enum pvc_pfs_state pvc_pfs_state;
+enum pvc_pfs_state
+{
+  PVC_PFS_CLOSED = 0x00, 
+  PVC_PFS_OPEN
+};
+
+internal void          pvc_pfs_main    (UNUSED void *parameters);
+internal pvc_pfs_state pvc_pfs_is_open ();
 
 #endif // PVC_CORE_H
 // pvc.h ends here.
