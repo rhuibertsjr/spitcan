@@ -1,4 +1,4 @@
 idf_component_register(
-    SRCS "pvc.c"
+    SRCS "spitcan.c" "pvc.c"
     REQUIRES driver
     INCLUDE_DIRS ".")
