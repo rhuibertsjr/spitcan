@@ -7,8 +7,8 @@ site_url:         https://localhost:8000/
 nav:
   - PVC's Vlow Control:
     - 'index.md'
-  - Weekly report:
-    - './weekly-reports/week-1.md'
+  - Software Architecture:
+    - './architecture/index.md'
   
 theme:
   name: material 

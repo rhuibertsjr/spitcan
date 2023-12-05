@@ -1,3 +1,9 @@
+#include "internal/internal.h"
+#include "platform/platform.h"
+
+#include "internal/internal.c"
+#include "platform/platform.c"
+
 #include "pvc.h"
 
 /* @brief: Project PVC (PVC's Vlow Control) is an experimental fluid management
@@ -14,14 +20,15 @@
 #include "spitcan.c"
 
 global_variable SemaphoreHandle_t message_buffer_semph;
-global_variable uint8_t message_buffer[1];
 
+#if 0 
 internal void
 pvc_check_spitcan_transmissions(void *parameters)
 {
   LOG(TAG_PLATFORM, INFO, "Listening for incoming messages...");
 
-  pvc_spitcan_message *message = (pvc_spitcan_message*) parameters;
+  pvc_task_parameters *params =
+    (pvc_task_parameters*) parameters;
 
   TickType_t last_wake_time = xTaskGetTickCount();
   TickType_t frequency = pdMS_TO_TICKS(2000);
@@ -55,6 +62,8 @@ pvc_check_spitcan_transmissions(void *parameters)
   return;
 }
 
+#endif
+
 internal pvc_pfs_state
 pvc_pfs_is_open()
 {
@@ -65,7 +74,7 @@ pvc_pfs_is_open()
 }
 
 internal void
-pvc_pfs_main(UNUSED void *parameters)
+pvc_pfs_main(void *parameters)
 {
   LOG(TAG_PFS, INFO, "Initalizing the paddle flow switch...")
   TickType_t last_wake_time = xTaskGetTickCount();
@@ -107,16 +116,14 @@ pvc_pfs_main(UNUSED void *parameters)
 void
 app_main (void)
 {
-  LOG(TAG_PLATFORM, INFO, "Ready.");
+  pvc_platform_initialize();
   pvc_spitcan_initalize(PVC_SPI_PIN);
 
-  // rhjr: TODO create a buffer, instead of a single message.
-
-  pvc_spitcan_message message = {0}; 
-  message.data = message_buffer;
+  pvc_arena *arena = pvc_arena_initialize(32);
 
   message_buffer_semph = xSemaphoreCreateMutex();
 
+#if 0
   xTaskCreate(pvc_check_spitcan_transmissions, "spitcan-periodic-rx0b-check",
     4096, (void*) &message, 1, NULL);
 
@@ -129,7 +136,7 @@ app_main (void)
     // rhjr: delay is needed to prevent triggering the watchdog. 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
+#endif
 
-  ASSERT(false, "Shouldn't be reached."); 
   return;
 }

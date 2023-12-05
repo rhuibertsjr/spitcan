@@ -5,23 +5,6 @@
 #  define PVC_SPITCAN_DEBUG 0x0
 #endif
 
-//= rhjr: spitcan helpers
-
-#define BYTES(x) ((x * 8)) 
-#define MHZ(x) ((x * 1000000))
-
-#define pvc_spitcan_register_dump()
-
-//= rhjr: serial peripheral interface
-
-#define PVC_SPI_SCK_FREQ MHZ(8)  
-
-#define PVC_SPI_PIN      HSPI_HOST   /* rhjr: SPI1_HOST is reserved.          */
-#define PVC_SPI_PIN_SCK  GPIO_NUM_14
-#define PVC_SPI_PIN_SDO  GPIO_NUM_13 /* MOSI                                  */
-#define PVC_SPI_PIN_SDI  GPIO_NUM_12 /* MISO                                  */
-#define PVC_SPI_PIN_CS0  GPIO_NUM_15 /* rhjr: Reserved for first slave.       */
-
 //= rhjr: mcp2515 types
 
 typedef enum pvc_spitcan_message_priority pvc_spitcan_message_priority;
@@ -152,8 +135,7 @@ internal void pvc_spitcan_set_message_identification (
 internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
   pvc_spitcan_message *frame, pvc_spitcan_message_priority priority);
 
-internal esp_err_t pvc_spitcan_read_message (
-  pvc_spitcan_message *destination, spi_device_handle_t device);
+internal esp_err_t pvc_spitcan_read_message (pvc_arena *arena);
 
 internal bool pvc_spitcan_received_new_message ();
 

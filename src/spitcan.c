@@ -13,9 +13,9 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
   //- rhjr: transaction
   spi_bus_config_t spi_bus_config =
     {
-      .sclk_io_num = PVC_SPI_PIN_SCK,
-      .mosi_io_num = PVC_SPI_PIN_SDO,
-      .miso_io_num = PVC_SPI_PIN_SDI,
+      .sclk_io_num = PVC_SPITCAN_PIN_SCK,
+      .mosi_io_num = PVC_SPITCAN_PIN_SDO,
+      .miso_io_num = PVC_SPITCAN_PIN_SDI,
       .quadwp_io_num = -1, // UNUSED
       .quadhd_io_num = -1, // UNUSED
     };
@@ -53,15 +53,15 @@ internal esp_err_t
 pvc_spitcan_add_device (spi_host_device_t spi_host, spi_device_handle_t *device)
 {
   ASSERT(spi_host < SPI_HOST_MAX, "Invalid SPI host");
-  ASSERT(PVC_SPI_SCK_FREQ < SPI_MASTER_FREQ_20M, 
+  ASSERT(PVC_SPITCAN_SCK_FREQ < SPI_MASTER_FREQ_20M, 
     "PVC_SPI_PIN_CLOCK_SPEED exceeds the allowed clock of MCP2515.");
 
   esp_err_t result;
   spi_device_interface_config_t spi_device_config = {0};  
 
   spi_device_config.mode           = 0;
-  spi_device_config.clock_speed_hz = PVC_SPI_SCK_FREQ;
-  spi_device_config.spics_io_num   = PVC_SPI_PIN_CS0;
+  spi_device_config.clock_speed_hz = PVC_SPITCAN_SCK_FREQ;
+  spi_device_config.spics_io_num   = PVC_SPITCAN_PIN_CS0;
   spi_device_config.queue_size     = 7;
   spi_device_config.duty_cycle_pos = 128; // rhjr: 50% 
 
@@ -180,7 +180,7 @@ pvc_spitcan_read_registers (
   result = spi_device_polling_transmit(mcp2515, &transaction);
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-    memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
+  memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -226,7 +226,7 @@ pvc_spitcan_set_registers(
   message[1] = _register;
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-    message[index + 2] = *data++;
+  message[index + 2] = *data++;
 
   transaction.tx_buffer = message;
 
@@ -276,7 +276,7 @@ pvc_spitcan_set_message_identification (
   *sidn_buffer++ = identifier >> 3;
   *sidn_buffer = (identifier & 0x07) << 5;
 
-#if 0
+  #if 0
   LOG(TAG_SPITCAN, INFO, "SIDL register dump: %u", *sidn_buffer-- );
   LOG(TAG_SPITCAN, INFO, "SIDH register dump: %u", *sidn_buffer);
 #endif
@@ -344,50 +344,44 @@ internal esp_err_t pvc_spitcan_write_message (
 }
 
 internal esp_err_t
-pvc_spitcan_read_message (
-  pvc_spitcan_message *destination, spi_device_handle_t device)
+pvc_spitcan_read_message(pvc_arena *arena)
 {
-  esp_err_t result = 1;
+  esp_err_t result;
 
-  uint32_t identifier;
-  uint8_t amount_of_received_bytes;
+  pvc_spitcan_message *msg =
+    (pvc_spitcan_message*) pvc_arena_allocate(
+      arena, sizeof(pvc_spitcan_message));
 
   //- rhjr: identifier reconstruction
   uint8_t identifier_fragments[2];
   pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[0]);
   pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[1]);
 
-  // rhjr: TODO should use pvc_spitcan_read_registers(), as a single call.
+  msg->identifier =
+    (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
 
-  identifier = (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
+  //- rhjr: data length code
+  const uint8_t DLC_MASK = 0x0F;
+  uint8_t n_received_bytes = 0;
 
-  //- rhjr: amount of bytes received
-  const uint8_t dlc_mask = 0x0F;
-  pvc_spitcan_read_register(REGISTER_RXB0DLC, &amount_of_received_bytes);
+  pvc_spitcan_read_register(REGISTER_RXB0DLC, &n_received_bytes);
 
-  amount_of_received_bytes &= dlc_mask;
-
-  if (amount_of_received_bytes == 0)
+  if (n_received_bytes == 0)
   {
     result = ESP_ERR_INVALID_SIZE;
     return result;
   }
 
-  //- rhjr: received data
-  uint8_t received_data = 0;
-  pvc_spitcan_read_register(REGISTER_RXB0DM, &received_data);
+  msg->length_in_bytes &= DLC_MASK;
 
-  // rhjr: TODO allow larger transactions of data, pvc_spitcan_read_registers();
-
-  memcpy(destination->data, &received_data, sizeof(uint8_t));
-
-  //- rhjr: can-frame reconstruction
-  destination->identifier = identifier;
-  destination->length_in_bytes = amount_of_received_bytes;
+  //- rhjr: data buffer 
+  pvc_spitcan_read_registers(
+    REGISTER_RXB0DM, msg->data, n_received_bytes);
 
   // rhjr: clear the RXBn, to allow new messages.  
   pvc_spitcan_set_register(REGISTER_CANINTF, 0x0);
 
+  result = ESP_OK;
   return result;
 }
 
