@@ -100,7 +100,7 @@ struct pvc_spitcan_message
 
 //= rhjr: spitcan interface
 
-internal esp_err_t pvc_spitcan_initalize (spi_host_device_t host_device);
+internal esp_err_t pvc_spitcan_initalize ();
 
 internal esp_err_t pvc_spitcan_add_device (
   spi_host_device_t host_device, spi_device_handle_t *device);

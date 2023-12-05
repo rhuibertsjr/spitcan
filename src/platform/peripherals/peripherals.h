@@ -5,7 +5,7 @@
 // default peripheral pins according to the ESP32-WROOM-32D.
 
 #ifndef PVC_SPITCAN_PIN
-#  define PVC_SPI_PIN          HSPI_HOST   /* rhjr: SPI1_HOST is reserved.    */
+#  define PVC_SPITCAN_PIN      HSPI_HOST   /* rhjr: SPI1_HOST is reserved.    */
 #endif // PVC_SPITCAN_PIN
 
 #ifndef PVC_SPITCAN_SCK_FREQ

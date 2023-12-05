@@ -2,6 +2,7 @@ internal void
 pvc_platform_initialize ()
 {
   LOG(TAG_PLATFORM, INFO, "Ready.");
+  pvc_spitcan_initalize();
 }
 
 internal void * 

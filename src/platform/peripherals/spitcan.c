@@ -3,9 +3,8 @@ global_variable spi_device_handle_t mcp2515;
 //= rhjr: spitcan device interfacing
 
 internal esp_err_t 
-pvc_spitcan_initalize (spi_host_device_t host_device)
+pvc_spitcan_initalize ()
 {
-  ASSERT(host_device < SPI_HOST_MAX, "Invalid SPI host.");
   LOG(TAG_SPITCAN, INFO, "Initializing Spitcan...");
 
   esp_err_t result;
@@ -21,14 +20,15 @@ pvc_spitcan_initalize (spi_host_device_t host_device)
     };
 
   //- rhjr: transmission
-  result = spi_bus_initialize(host_device, &spi_bus_config, SPI_DMA_DISABLED);
+  result =
+    spi_bus_initialize(PVC_SPITCAN_PIN, &spi_bus_config, SPI_DMA_DISABLED);
   ASSERT(result == ESP_OK, "Initializing the SPI bus failed.");
   
   //- rhjr: initializing mcp2515
   LOG(TAG_SPITCAN, INFO, "  - Initializing MCP2515...");
   LOG(TAG_SPITCAN, INFO, "    + Adding MCP2515 to the SPI bus");
 
-  result = pvc_spitcan_add_device(host_device, &mcp2515);
+  result = pvc_spitcan_add_device(PVC_SPITCAN_PIN, &mcp2515);
 
   ASSERT(result == ESP_OK, "Adding the MCP2515 to the SPI bus failed.");
 
