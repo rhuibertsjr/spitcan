@@ -1,5 +1,10 @@
-#ifndef PVC_SPITCAN_H
-#define PVC_SPITCAN_H
+#ifndef PVC_PLATFORM_SPITCAN_H
+#define PVC_PLATFORM_SPITCAN_H
+
+#include "driver/gpio.h"
+
+#include "driver/spi_master.h"
+#include "driver/spi_slave.h"
 
 #ifndef PVC_SPITCAN_DEBUG
 #  define PVC_SPITCAN_DEBUG 0x0
@@ -139,5 +144,5 @@ internal esp_err_t pvc_spitcan_read_message (pvc_arena *arena);
 
 internal bool pvc_spitcan_received_new_message ();
 
-#endif /* PVC_SPITCAN_H */
+#endif // PVC_PLATFORM_SPITCAN_H
 // spitcan.h ends here.

@@ -4,8 +4,6 @@
 #include "internal/internal.c"
 #include "platform/platform.c"
 
-#include "pvc.h"
-
 /* @brief: Project PVC (PVC's Vlow Control) is an experimental fluid management
  *         system. Its purpose is to safely control the water levels from one 
  *         tank to another. It has several safety features, and can be reliably
@@ -16,8 +14,7 @@
  * @date: 22 - 11 - 2023
  */
 
-#include "spitcan.h"
-#include "spitcan.c"
+#include "pvc.h"
 
 global_variable SemaphoreHandle_t message_buffer_semph;
 

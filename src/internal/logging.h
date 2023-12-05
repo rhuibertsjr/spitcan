@@ -37,6 +37,13 @@ const char *_pvc_monitor_tag_table[] =
     [TAG_PFS]      = "Paddle Flow Switch"
   };
 
+internal void _pvc_monitor_stdout_log(
+  pvc_monitor_tag tag, pvc_monitor_type type, const char* format, ...);
+
+internal _Noreturn uintptr_t _pvc_monitor_assert (
+  const char* condition, const char* file, const char* func, uint32_t line,
+  const char *format, ...);
+
 #if PVC_LOGGING
 #  define LOG(tag, type, message, ...)                                         \
       STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)

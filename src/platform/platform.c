@@ -1,4 +1,3 @@
-
 internal void
 pvc_platform_initialize ()
 {
