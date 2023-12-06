@@ -140,7 +140,7 @@ internal void pvc_spitcan_set_message_identification (
 internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
   pvc_spitcan_message *frame, pvc_spitcan_message_priority priority);
 
-internal esp_err_t pvc_spitcan_read_message (pvc_arena *arena);
+internal pvc_spitcan_message * pvc_spitcan_read_message (pvc_arena *arena);
 
 internal bool pvc_spitcan_received_new_message ();
 

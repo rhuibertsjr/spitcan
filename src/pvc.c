@@ -14,7 +14,8 @@
  * @date: 22 - 11 - 2023
  */
 
-#define PVC_TASK_SPITCAN 0x1
+#define PVC_TASK_SPITCAN            0x1
+#define PVC_TASK_PADDLE_FLOW_SWITCH 0x0
 
 #include "pvc.h"
 
@@ -59,7 +60,11 @@ pvc_task_spitcan (void *parameters)
   while(1)
   {
     if (pvc_spitcan_received_new_message())
-      pvc_spitcan_read_message(params->arena);
+    {
+      pvc_spitcan_message *msg = pvc_spitcan_read_message(params->arena);
+
+      LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u", msg->identifier, *msg->data);
+    }
 
     vTaskDelayUntil(&last_wake_time, frequency);
   }
@@ -78,12 +83,21 @@ pvc_task_paddle_flow_switch (void *parameters)
   TickType_t frequency = pdMS_TO_TICKS(2000);
 
   LOG(TAG_PLATFORM, INFO, "Starting paddle flow switch task.");
+
+  uint8_t result = 255;
+  pvc_spitcan_message message =
+    {
+      .identifier      = 0xDB,
+      .length_in_bytes = 0x01,
+      .data            = &result 
+    }; 
   
   while(1)
   {
-    uint8_t state = pvc_pfs_is_open();
-
-    // rhjr: TODO add pfs
+    if (pvc_pfs_is_open())
+    {
+      pvc_spitcan_write_message(&mcp2515, &message, HIGH_INTM_PRIORITY);
+    }
 
     vTaskDelayUntil(&last_wake_time, frequency);
   }
@@ -103,12 +117,17 @@ void app_main (void)
 
   //- rhjr: tasks
 
+  // rhjr: TODO: fix magic numbers.
+
 #if PVC_TASK_SPITCAN
   xTaskCreate(
-    pvc_task_spitcan, "pvc-task_spitcan", 1024, (void*) arena, 1, NULL);
+    pvc_task_spitcan, "pvc-task-spitcan", 4096, (void*) arena, 1, NULL);
 #endif // PVC_TASK_SPITCAN
 
-  // rhjr: TODO fix magic numbers
+#if PVC_TASK_PADDLE_FLOW_SWITCH
+  xTaskCreate(
+    pvc_task_paddle_flow_switch, "pvc-task-pfs", 4096, (void*) arena, 1, NULL);
+#endif // PVC_TASK_PADDLE_FLOW_SWITCH
 
   //- rhjr: main task
   while(1)

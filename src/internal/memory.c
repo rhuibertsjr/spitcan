@@ -2,8 +2,9 @@
 internal pvc_arena *
 pvc_arena_initialize (uint32_t size)
 {
-  ASSERT(size < PVC_ARENA_MAXIMUM_SIZE,
-    "The asked arena size (%u) exceeds the maximum allowed size.", size);
+  ASSERT(size <= PVC_ARENA_MAXIMUM_SIZE,
+    "The asked arena size (%u) exceeds the maximum (%u) allowed size.",
+    size, PVC_ARENA_MAXIMUM_SIZE);
 
   pvc_arena *result = 0;
   void *memory = pvc_platform_memory_allocate(size);

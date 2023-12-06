@@ -343,11 +343,9 @@ internal esp_err_t pvc_spitcan_write_message (
   return result;
 }
 
-internal esp_err_t
+internal pvc_spitcan_message *  
 pvc_spitcan_read_message(pvc_arena *arena)
 {
-  esp_err_t result;
-
   pvc_spitcan_message *msg =
     (pvc_spitcan_message*) pvc_arena_allocate(
       arena, sizeof(pvc_spitcan_message));
@@ -360,45 +358,42 @@ pvc_spitcan_read_message(pvc_arena *arena)
   msg->identifier =
     (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
 
+  LOG(TAG_NONE, WARNING, "ID -> %u", msg->identifier);
+
   //- rhjr: data length code
   const uint8_t DLC_MASK = 0x0F;
-  uint8_t n_received_bytes = 0;
 
-  pvc_spitcan_read_register(REGISTER_RXB0DLC, &n_received_bytes);
-
-  if (n_received_bytes == 0)
-  {
-    result = ESP_ERR_INVALID_SIZE;
-    return result;
-  }
-
+  pvc_spitcan_read_register(REGISTER_RXB0DLC, &msg->length_in_bytes);
   msg->length_in_bytes &= DLC_MASK;
+
+  LOG(TAG_NONE, WARNING, "Bytes -> %u", msg->length_in_bytes);
+
+  if (msg->length_in_bytes == 0)
+  return NULL;
+
+  LOG(TAG_NONE, WARNING, "AFTEER");
 
   //- rhjr: data buffer 
   pvc_spitcan_read_registers(
-    REGISTER_RXB0DM, msg->data, n_received_bytes);
+    REGISTER_RXB0DM, msg->data, msg->length_in_bytes);
 
   // rhjr: clear the RXBn, to allow new messages.  
+  LOG(TAG_NONE, WARNING, "Resetting.");
   pvc_spitcan_set_register(REGISTER_CANINTF, 0x0);
 
-  result = ESP_OK;
-  return result;
+  return msg;
 }
 
 internal bool
 pvc_spitcan_received_new_message ()
 {
-  // rhjr: MCP2515-manual p. 54.
-
   uint8_t result = 0;
   uint8_t rxb0if_mask = 0x01;
 
   pvc_spitcan_read_register(REGISTER_CANINTF, &result);
 
   if ((result & rxb0if_mask) == 1)
-  {
     return true;
-  }
 
   return false;
 }

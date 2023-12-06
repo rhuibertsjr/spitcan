@@ -13,7 +13,7 @@
 
 //= rhjr: arena allocator
 
-#define PVC_ARENA_MAXIMUM_SIZE 128
+#define PVC_ARENA_MAXIMUM_SIZE 1024
 
 typedef struct pvc_arena pvc_arena;
 struct pvc_arena
