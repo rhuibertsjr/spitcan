@@ -1,3 +1,7 @@
+
+// rhjr: debug and peripherals macros go here. 
+#define PVC_SPITCAN_DEBUG 0x0
+
 #include "internal/internal.h"
 #include "platform/platform.h"
 
@@ -17,6 +21,7 @@
 #include "pvc.h"
 
 //= rhjr: paddle flow switch helpers
+
 internal void
 pvc_pfs_initalize ()
 {
@@ -49,7 +54,7 @@ pvc_task_spitcan (void *parameters)
   pvc_task_parameters *params = (pvc_task_parameters*) parameters;
 
   TickType_t last_wake_time = xTaskGetTickCount();
-  TickType_t frequency = pdMS_TO_TICKS(2000);
+  TickType_t frequency = pdMS_TO_TICKS(SEC(2));
 
   pvc_arena *arena = params->arena;
 
@@ -83,14 +88,15 @@ pvc_task_paddle_flow_switch (void *parameters)
   TickType_t last_wake_time = xTaskGetTickCount();
   TickType_t frequency = pdMS_TO_TICKS(2000);
 
-  LOG(TAG_PLATFORM, INFO, "Starting paddle flow switch task.");
-
+  // rhjr: Only sends a message when open, that why its hardcoded.
   pvc_spitcan_message message =
     {
-      .identifier      = 0xDB,
+      .identifier      = PVC_PFS_ID,
       .length_in_bytes = 0x01,
-      .data            = 1
+      .data            = 1  
     }; 
+
+  LOG(TAG_PLATFORM, INFO, "Starting paddle flow switch task.");
   
   uint8_t result;
   while(1)
@@ -115,9 +121,11 @@ pvc_task_paddle_flow_switch (void *parameters)
 void app_main (void)
 {
   //- rhjr: initalization
+
   pvc_platform_initialize();
 
   //- rhjr: tasks
+
 #if PVC_SPITCAN_ENABLE
   pvc_arena *spitcan_storage = pvc_arena_initialize(512);
 

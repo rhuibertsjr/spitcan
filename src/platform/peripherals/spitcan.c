@@ -339,7 +339,7 @@ pvc_spitcan_write_message (
     LOG(TAG_SPITCAN, ERROR,
       "  /-> Status register dump -> %u", status_txb_ctrl);
     LOG(TAG_SPITCAN, ERROR,
-      "  /-> Error flags register dump -> %u", error_flags);
+      "  /-> Error flags register dump -> %u", error_flag);
 
     result = ESP_ERR_INVALID_RESPONSE;
     return result;
