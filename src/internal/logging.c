@@ -11,6 +11,8 @@ _pvc_monitor_stdout_log(
   vsnprintf(message, message_size, format, args_list);
   va_end(args_list);
 
+  // rhjr: TODO fix dependency on platform layer.
+
   fprintf(stdout, "[%05llu][DEBUG][%s] (%s) %s\n",
     pvc_platform_rtc_get_time(), _pvc_monitor_type_table[type],
     _pvc_monitor_tag_table[tag], message);
@@ -28,6 +30,8 @@ _pvc_monitor_assert (
   va_start(args_list, format);
   vsnprintf(message, message_size, format, args_list);
   va_end(args_list);
+
+  // rhjr: TODO fix dependency on platform layer.
 
   fprintf(stderr, "[%05llu][DEBUG][%s] (%s) \"%s\" at %s::%s() at %ld: %s.\n",
     pvc_platform_rtc_get_time(), _pvc_monitor_type_table[ERROR],

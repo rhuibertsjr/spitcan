@@ -39,6 +39,13 @@
 
 #define STATEMENT(x) do { x } while(0);
 
+//= rhjr: context cracking
+
+#if PVC_DEBUG
+#  define PVC_LOGGING 1
+#  define PVC_ASSERT 1
+#endif
+
 //= rhjr: modules
 
 #include "logging.h"

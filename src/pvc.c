@@ -1,6 +1,6 @@
 
 // rhjr: debug and peripherals macros go here. 
-#define PVC_SPITCAN_DEBUG 0x0
+#define PVC_SPITCAN_DEBUG 0x1
 
 #include "internal/internal.h"
 #include "platform/platform.h"
@@ -67,7 +67,9 @@ pvc_task_spitcan (void *parameters)
     {
       pvc_spitcan_message *msg = pvc_spitcan_read_message(params->arena);
 
+      #if PVC_SPITCAN_DEBUG
       LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u", msg->identifier, msg->data);
+#endif
 
       pvc_platform_memory_restore(arena, restore_alloc_pos);
     }
@@ -115,8 +117,8 @@ pvc_task_paddle_flow_switch (void *parameters)
 
 //= rhjr: application
 
-#define PVC_TASK_SPITCAN            0x0
-#define PVC_TASK_PADDLE_FLOW_SWITCH 0x1
+#define PVC_TASK_SPITCAN            0x1
+#define PVC_TASK_PADDLE_FLOW_SWITCH 0x0
 
 void app_main (void)
 {
@@ -126,14 +128,14 @@ void app_main (void)
 
   //- rhjr: tasks
 
-#if PVC_SPITCAN_ENABLE
+#if PVC_TASK_SPITCAN
   pvc_arena *spitcan_storage = pvc_arena_initialize(512);
 
   xTaskCreate(pvc_task_spitcan, "pvc-task-spitcan",
     4096, (void*) spitcan_storage, 1, NULL);
 #endif
 
-#if PVC_PFS_ENABLE
+#if PVC_TASK_PADDLE_FLOW_SWITCH
   xTaskCreate(pvc_task_paddle_flow_switch, "pvc-task-paddle-flow-switch",
     4096, NULL, 1, NULL);
 #endif

@@ -44,15 +44,19 @@ internal _Noreturn uintptr_t _pvc_monitor_assert (
   const char* condition, const char* file, const char* func, uint32_t line,
   const char *format, ...);
 
-#if PVC_LOGGING
-#  define LOG(tag, type, message, ...)                                         \
-      STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)
+#if PVC_DEBUG
 #  define DEBUG(message, ...)                                                  \
       STATEMENT(_pvc_monitor_stdout_log(                                       \
         TAG_NONE, WARNING, message, ##__VA_ARGS__);)
 #else
-#  define LOG(tag, type, message, ...)
 #  define DEBUG(tag, type, message, ...)
+#endif // PVC_DEBUG
+
+#if PVC_LOGGING
+#  define LOG(tag, type, message, ...)                                         \
+      STATEMENT(_pvc_monitor_stdout_log(tag, type, message, ##__VA_ARGS__);)
+#else
+#  define LOG(tag, type, message, ...)
 #endif // PVC_LOGGING
 
 #if PVC_ASSERT

@@ -132,7 +132,7 @@ pvc_spitcan_device_set_mode (spi_device_handle_t host, pvc_mcp_mode mode)
 //= rhjr: spitcan register manipulation
 
 internal esp_err_t
-pvc_spitcan_read_register(const pvc_mcp_register _register, uint8_t *data)
+pvc_spitcan_read_register(pvc_mcp_register _register, uint8_t *data)
 {
   esp_err_t result;
 
@@ -155,7 +155,7 @@ pvc_spitcan_read_register(const pvc_mcp_register _register, uint8_t *data)
 
 internal esp_err_t
 pvc_spitcan_read_registers (
-  const pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes)
+  pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes)
 {
   ASSERT(length_in_bytes <= 14, "Spitcan message exceeds the 14 byte limit.");
   esp_err_t result;
@@ -188,7 +188,7 @@ pvc_spitcan_read_registers (
 }
 
 internal esp_err_t
-pvc_spitcan_set_register(const pvc_mcp_register _register, const uint8_t value)
+pvc_spitcan_set_register(pvc_mcp_register _register, uint8_t value)
 {
   esp_err_t result;
 
@@ -210,8 +210,7 @@ pvc_spitcan_set_register(const pvc_mcp_register _register, const uint8_t value)
 
 internal esp_err_t
 pvc_spitcan_set_registers(
-  const pvc_mcp_register _register, const uint8_t *data,
-  const uint8_t length_in_bytes)
+  pvc_mcp_register _register,  uint8_t *data, uint8_t length_in_bytes)
 {
   ASSERT(length_in_bytes <= 14, "Spitcan message exceeds the 14 byte limit.");
   esp_err_t result;
@@ -240,7 +239,7 @@ pvc_spitcan_set_registers(
 
 internal esp_err_t
 pvc_spitcan_modify_register(
-  const pvc_mcp_register _register, const uint8_t mask, uint8_t data)
+  pvc_mcp_register _register, uint8_t mask, uint8_t data)
 {
   esp_err_t result;
 
@@ -341,7 +340,7 @@ pvc_spitcan_write_message (
     LOG(TAG_SPITCAN, ERROR,
       "  /-> Status register dump -> %u", status_txb_ctrl);
     LOG(TAG_SPITCAN, ERROR,
-      "  /-> Error flags register dump -> %u", error_flag);
+      "  /-> Error flags register dump -> %u", error_flags);
 
     result = ESP_ERR_INVALID_RESPONSE;
     return result;
