@@ -277,7 +277,7 @@ pvc_spitcan_set_message_identification (
   *sidn_buffer++ = identifier >> 3;
   *sidn_buffer = (identifier & 0x07) << 5;
 
-  #if 0
+#if PVC_SPITCAN_DEBUG
   LOG(TAG_SPITCAN, INFO, "SIDL register dump: %u", *sidn_buffer-- );
   LOG(TAG_SPITCAN, INFO, "SIDH register dump: %u", *sidn_buffer);
 #endif
@@ -297,7 +297,9 @@ pvc_spitcan_write_message (
 
   if ((received_message & TXB_TXREQ) == TXB_TXREQ)
   {
+#if PVC_SPITCAN_DEBUG
     LOG(TAG_SPITCAN, WARNING, "Message queue is full.");
+#endif
     return ESP_ERR_INVALID_SIZE;
   }
 

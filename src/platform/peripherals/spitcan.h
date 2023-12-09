@@ -1,6 +1,21 @@
 #ifndef PVC_PLATFORM_SPITCAN_H
 #define PVC_PLATFORM_SPITCAN_H
 
+/* @brief: Spit(o)can is the SPI to CAN-bus API for project PVC. Spitcan is only
+ *         available for the MCP2515 Transceiver module (See references), and
+ *         should not be used with other CAN-bus modules. This codebase has been
+ *         created with help of the MCP2515 manual and should not be edited nor
+ *         viewed without this manual at hand.
+ *
+ *         References:
+ *           -  https://ww1.microchip.com/downloads/aemDocuments/documents/APID/
+ *              ProductDocuments/DataSheets/ MCP2515-Family-Data-Sheet-
+ *              DS20001801K.pdf
+ *
+ * @authors: Rene Huiberts
+ * @date: 09 - 12 - 2023
+ */
+
 #include "driver/gpio.h"
 
 #include "driver/spi_master.h"
@@ -86,8 +101,9 @@ enum pvc_mcp_register_TXnCTRL
   TXB_TXP    = 0x03
 };
 
-//- rhjr: CAN
+//= rhjr: spitcan data 
 
+// rhjr: masks
 #define PVC_CAN_SFF_MASK 0x000007FFUL /* rhjr: standard frame format (SFF) */
 #define PVC_CAN_DLC_MASK 0x0F
 
@@ -95,43 +111,44 @@ typedef struct pvc_spitcan_message pvc_spitcan_message;
 struct pvc_spitcan_message
 {
   uint32_t identifier;
-  uint8_t length_in_bytes;
+  uint8_t  length_in_bytes;
   uint32_t data;
 };
 
-//= rhjr: spitcan interface
+//= rhjr: spitcan interface 
 
 internal esp_err_t pvc_spitcan_initalize ();
 
-internal esp_err_t pvc_spitcan_add_device (
-  spi_host_device_t host_device, spi_device_handle_t *device);
+//- rhjr: device helpers 
+
 internal esp_err_t pvc_spitcan_reset_device (
   spi_device_handle_t device);
 
-//- rhjr: spitcan state
+internal esp_err_t pvc_spitcan_add_device (
+  spi_host_device_t host_device, spi_device_handle_t *device);
 
 internal esp_err_t pvc_spitcan_device_set_mode (
   spi_device_handle_t device, pvc_mcp_mode mode);
 
 //- rhjr: spitcan register manipulation
 
+// rhjr: set
 internal esp_err_t pvc_spitcan_set_register (
-  const pvc_mcp_register _register, const uint8_t value);
+  pvc_mcp_register _register, uint8_t value);
 
 internal esp_err_t pvc_spitcan_set_registers (
-  const pvc_mcp_register _register, const uint8_t *data,
-  const uint8_t length_in_bytes);
+  pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes);
 
+// rhjr: read
 internal esp_err_t pvc_spitcan_read_register (
-  const pvc_mcp_register _register, uint8_t *data);
+  pvc_mcp_register _register, uint8_t *data);
 
 internal esp_err_t pvc_spitcan_read_registers (
-  const pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes);
+  pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes);
 
-// rhjr: Note not all registers can be modified, see which are available in the
-//       MCP2515-manual.
+// rhjr: modify
 internal esp_err_t pvc_spitcan_modify_register(
-  const pvc_mcp_register _register, const uint8_t mask, uint8_t data);
+  pvc_mcp_register _register, uint8_t mask, uint8_t data);
 
 //- rhjr: writing spitcan message + helpers
 
@@ -143,7 +160,8 @@ internal esp_err_t pvc_spitcan_write_message (
 
 //- rhjr: reading spitcan message + helpers
 
-internal pvc_spitcan_message * pvc_spitcan_read_message (pvc_arena *arena);
+internal pvc_spitcan_message * pvc_spitcan_read_message (
+  pvc_arena *arena);
 
 internal bool pvc_spitcan_received_new_message ();
 
