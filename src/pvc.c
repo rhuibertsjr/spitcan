@@ -14,9 +14,6 @@
  * @date: 22 - 11 - 2023
  */
 
-#define PVC_TASK_SPITCAN            0x1
-#define PVC_TASK_PADDLE_FLOW_SWITCH 0x0
-
 #include "pvc.h"
 
 //= rhjr: paddle flow switch helpers
@@ -49,21 +46,25 @@ pvc_pfs_is_open ()
 internal void
 pvc_task_spitcan (void *parameters)
 {
-  pvc_task_parameters *params =
-    (pvc_task_parameters*) parameters;
+  pvc_task_parameters *params = (pvc_task_parameters*) parameters;
 
   TickType_t last_wake_time = xTaskGetTickCount();
   TickType_t frequency = pdMS_TO_TICKS(2000);
 
+  pvc_arena *arena = params->arena;
+
   LOG(TAG_PLATFORM, INFO, "Starting spitcan task.");
   
+  uint32_t restore_alloc_pos = arena->offset;
   while(1)
   {
     if (pvc_spitcan_received_new_message())
     {
       pvc_spitcan_message *msg = pvc_spitcan_read_message(params->arena);
 
-      LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u", msg->identifier, *msg->data);
+      LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u", msg->identifier, msg->data);
+
+      pvc_platform_memory_restore(arena, restore_alloc_pos);
     }
 
     vTaskDelayUntil(&last_wake_time, frequency);
@@ -76,7 +77,7 @@ pvc_task_spitcan (void *parameters)
 internal void
 pvc_task_paddle_flow_switch (void *parameters)
 {
-  pvc_task_parameters *params =
+  UNUSED pvc_task_parameters *params =
     (pvc_task_parameters*) parameters;
 
   TickType_t last_wake_time = xTaskGetTickCount();
@@ -84,19 +85,19 @@ pvc_task_paddle_flow_switch (void *parameters)
 
   LOG(TAG_PLATFORM, INFO, "Starting paddle flow switch task.");
 
-  uint8_t result = 255;
   pvc_spitcan_message message =
     {
       .identifier      = 0xDB,
       .length_in_bytes = 0x01,
-      .data            = &result 
+      .data            = 1
     }; 
   
+  uint8_t result;
   while(1)
   {
-    if (pvc_pfs_is_open())
+    if ((result = pvc_pfs_is_open()))
     {
-      pvc_spitcan_write_message(&mcp2515, &message, HIGH_INTM_PRIORITY);
+      pvc_spitcan_write_message(&message, HIGH_INTM_PRIORITY);
     }
 
     vTaskDelayUntil(&last_wake_time, frequency);
@@ -108,32 +109,32 @@ pvc_task_paddle_flow_switch (void *parameters)
 
 //= rhjr: application
 
+#define PVC_TASK_SPITCAN            0x0
+#define PVC_TASK_PADDLE_FLOW_SWITCH 0x1
+
 void app_main (void)
 {
   //- rhjr: initalization
   pvc_platform_initialize();
 
-  pvc_arena *arena = pvc_arena_initialize(1024);
-
   //- rhjr: tasks
+#if PVC_SPITCAN_ENABLE
+  pvc_arena *spitcan_storage = pvc_arena_initialize(512);
 
-  // rhjr: TODO: fix magic numbers.
+  xTaskCreate(pvc_task_spitcan, "pvc-task-spitcan",
+    4096, (void*) spitcan_storage, 1, NULL);
+#endif
 
-#if PVC_TASK_SPITCAN
-  xTaskCreate(
-    pvc_task_spitcan, "pvc-task-spitcan", 4096, (void*) arena, 1, NULL);
-#endif // PVC_TASK_SPITCAN
+#if PVC_PFS_ENABLE
+  xTaskCreate(pvc_task_paddle_flow_switch, "pvc-task-paddle-flow-switch",
+    4096, NULL, 1, NULL);
+#endif
 
-#if PVC_TASK_PADDLE_FLOW_SWITCH
-  xTaskCreate(
-    pvc_task_paddle_flow_switch, "pvc-task-pfs", 4096, (void*) arena, 1, NULL);
-#endif // PVC_TASK_PADDLE_FLOW_SWITCH
+  //- rhjr: main thread
 
-  //- rhjr: main task
   while(1)
   {
-    // rhjr: delay is needed to prevent triggering the watchdog. 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(20 / portTICK_PERIOD_MS);
   }
 
   ASSERT(false, "Task ended unexpectedly.");

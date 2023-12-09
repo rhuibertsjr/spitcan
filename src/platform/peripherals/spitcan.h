@@ -89,13 +89,14 @@ enum pvc_mcp_register_TXnCTRL
 //- rhjr: CAN
 
 #define PVC_CAN_SFF_MASK 0x000007FFUL /* rhjr: standard frame format (SFF) */
+#define PVC_CAN_DLC_MASK 0x0F
 
 typedef struct pvc_spitcan_message pvc_spitcan_message;
 struct pvc_spitcan_message
 {
   uint32_t identifier;
   uint8_t length_in_bytes;
-  uint8_t *data;
+  uint32_t data;
 };
 
 //= rhjr: spitcan interface
@@ -132,13 +133,15 @@ internal esp_err_t pvc_spitcan_read_registers (
 internal esp_err_t pvc_spitcan_modify_register(
   const pvc_mcp_register _register, const uint8_t mask, uint8_t data);
 
-//- rhjr: spitcan message frame
+//- rhjr: writing spitcan message + helpers
 
 internal void pvc_spitcan_set_message_identification (
   uint8_t *sidn_buffer, pvc_spitcan_message *frame);
 
-internal esp_err_t pvc_spitcan_write_message (spi_device_handle_t *device,
-  pvc_spitcan_message *frame, pvc_spitcan_message_priority priority);
+internal esp_err_t pvc_spitcan_write_message (
+  pvc_spitcan_message *message, pvc_spitcan_message_priority priority);
+
+//- rhjr: reading spitcan message + helpers
 
 internal pvc_spitcan_message * pvc_spitcan_read_message (pvc_arena *arena);
 

@@ -24,11 +24,16 @@
 #define internal        static 
 #define global_variable static 
 
+#define UNUSED          __attribute__((unused))
+
 //- rhjr: units
+
 #define BYTES(x) ((x * 8)) 
 #define MHZ(x)   ((x * 1000000))
+#define MS(x)    ((x) / 1000ULL)
 
 //- rhjr: macros
+
 #define STATEMENT(x) do { x } while(0);
 
 //= rhjr: modules

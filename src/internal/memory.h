@@ -26,6 +26,9 @@ struct pvc_arena
 internal pvc_arena * pvc_arena_initialize (uint32_t size);
 internal void *      pvc_arena_allocate   (pvc_arena *arena, uint32_t size);
 
+#define pvc_memory_push(arena, type, count)                                    \
+  (type*) pvc_arena_allocate(arena, sizeof(type) * (count) );
+
 internal void        pvc_arena_free       (pvc_arena *arena);
 
 #endif // PVC_INTERNAL_MEMORY_H

@@ -1,5 +1,6 @@
 build/
 docs/project-pvc.mlt
+.dir-locals.el
 
 sdkconfig
 sdkconfig.old

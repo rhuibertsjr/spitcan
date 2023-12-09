@@ -11,8 +11,9 @@ _pvc_monitor_stdout_log(
   vsnprintf(message, message_size, format, args_list);
   va_end(args_list);
 
-  fprintf(stdout, "[DEBUG][%s] (%s) %s\n",
-    _pvc_monitor_type_table[type], _pvc_monitor_tag_table[tag], message);
+  fprintf(stdout, "[%05llu][DEBUG][%s] (%s) %s\n",
+    pvc_platform_rtc_get_time(), _pvc_monitor_type_table[type],
+    _pvc_monitor_tag_table[tag], message);
 }
 
 internal _Noreturn uintptr_t
@@ -28,9 +29,9 @@ _pvc_monitor_assert (
   vsnprintf(message, message_size, format, args_list);
   va_end(args_list);
 
-  fprintf(stderr, "[DEBUG][%s] (%s) \"%s\" at %s::%s() at %ld: %s.\n",
-    _pvc_monitor_type_table[ERROR], _pvc_monitor_tag_table[TAG_ASSERT],
-    condition, file, func, line, message);
+  fprintf(stderr, "[%05llu][DEBUG][%s] (%s) \"%s\" at %s::%s() at %ld: %s.\n",
+    pvc_platform_rtc_get_time(), _pvc_monitor_type_table[ERROR],
+    _pvc_monitor_tag_table[TAG_ASSERT], condition, file, func, line, message);
 
   fflush(stdout);
   abort();

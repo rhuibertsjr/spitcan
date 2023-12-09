@@ -166,7 +166,8 @@ pvc_spitcan_read_registers (
   uint8_t rx_message[16] = {0}; // rhjr: TODO expand
 
   transaction.flags  = 0; // rhjr: tx_data is limited to 32-bits.
-  transaction.length = BYTES(2 + (size_t) length_in_bytes); // rhjr: inst. + register
+  transaction.length =
+    BYTES(2 + (size_t) length_in_bytes); // rhjr: inst. + register
 
   tx_message[0] = INSTRUCTION_READ;
   tx_message[1] = _register;
@@ -180,7 +181,7 @@ pvc_spitcan_read_registers (
   result = spi_device_polling_transmit(mcp2515, &transaction);
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-  memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
+    memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -282,13 +283,13 @@ pvc_spitcan_set_message_identification (
 #endif
 }
 
-internal esp_err_t pvc_spitcan_write_message (
-  spi_device_handle_t *device, pvc_spitcan_message *frame,
-  pvc_spitcan_message_priority priority)
+internal esp_err_t
+pvc_spitcan_write_message (
+  pvc_spitcan_message *message, pvc_spitcan_message_priority priority)
 {
   ASSERT(priority < MAX_PRIORITY, "Unkown spitcan priority: %d", priority);
 
-  esp_err_t result = ESP_FAIL; // rhjr: assumes failed transmission. 
+  esp_err_t result;
 
   //- rhjr: check transmission buffer
   uint8_t received_message = 0;
@@ -305,17 +306,17 @@ internal esp_err_t pvc_spitcan_write_message (
 
   // rhjr: set message identification
   uint8_t txb_sidn_buffer[2] = {0}; 
-  pvc_spitcan_set_message_identification(txb_sidn_buffer, frame);
+  pvc_spitcan_set_message_identification(txb_sidn_buffer, message);
 
   pvc_spitcan_set_register(REGISTER_TXB0SIDH, txb_sidn_buffer[0]);
   pvc_spitcan_set_register(REGISTER_TXB0SIDL, txb_sidn_buffer[1]);
 
   // rhjr: fill message with data
   uint8_t data = 0;
-  memcpy(&data, frame->data, frame->length_in_bytes);
+  memcpy(&data, &message->data, message->length_in_bytes);
 
   pvc_spitcan_set_register(REGISTER_TXB0DM, data);
-  pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x4F, frame->length_in_bytes);
+  pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x4F, message->length_in_bytes);
 
   // rhjr: request for transmission 
   pvc_spitcan_modify_register(REGISTER_TXB0CTRL, TXB_TXP,   priority);
@@ -331,15 +332,20 @@ internal esp_err_t pvc_spitcan_write_message (
   // rhjr: check if error bits are set.
   if ((status_txb_ctrl & (TXB_ABTF | TXB_MLOA | TXB_TXERR)) != 0)
   {
-    LOG(TAG_SPITCAN, ERROR,
-      "Writing message to MCP2515 failed, register dump: %d", status_txb_ctrl);
-    result = ESP_ERR_INVALID_RESPONSE;
-    
     uint8_t error_flags;
     pvc_spitcan_read_register(REGISTER_EFLG, &error_flags);
-    DEBUG("ERROR EFLG: %u", error_flags);
+
+    LOG(TAG_SPITCAN, ERROR, "Writing message failed");
+    LOG(TAG_SPITCAN, ERROR,
+      "  /-> Status register dump -> %u", status_txb_ctrl);
+    LOG(TAG_SPITCAN, ERROR,
+      "  /-> Error flags register dump -> %u", error_flags);
+
+    result = ESP_ERR_INVALID_RESPONSE;
+    return result;
   }
 
+  result = ESP_OK;
   return result;
 }
 
@@ -347,39 +353,32 @@ internal pvc_spitcan_message *
 pvc_spitcan_read_message(pvc_arena *arena)
 {
   pvc_spitcan_message *msg =
-    (pvc_spitcan_message*) pvc_arena_allocate(
-      arena, sizeof(pvc_spitcan_message));
+    pvc_memory_push(arena, pvc_spitcan_message, 1);
 
   //- rhjr: identifier reconstruction
+
   uint8_t identifier_fragments[2];
   pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[0]);
-  pvc_spitcan_read_register(REGISTER_RXB0SIDH, &identifier_fragments[1]);
+  pvc_spitcan_read_register(REGISTER_RXB0SIDL, &identifier_fragments[1]);
 
   msg->identifier =
     (identifier_fragments[0] << 3) + (identifier_fragments[1] >> 5);
 
-  LOG(TAG_NONE, WARNING, "ID -> %u", msg->identifier);
-
   //- rhjr: data length code
-  const uint8_t DLC_MASK = 0x0F;
 
   pvc_spitcan_read_register(REGISTER_RXB0DLC, &msg->length_in_bytes);
-  msg->length_in_bytes &= DLC_MASK;
-
-  LOG(TAG_NONE, WARNING, "Bytes -> %u", msg->length_in_bytes);
+  msg->length_in_bytes &= PVC_CAN_DLC_MASK;
 
   if (msg->length_in_bytes == 0)
-  return NULL;
+    return NULL;
 
-  LOG(TAG_NONE, WARNING, "AFTEER");
+  //- rhjr: data buffer
 
-  //- rhjr: data buffer 
-  pvc_spitcan_read_registers(
-    REGISTER_RXB0DM, msg->data, msg->length_in_bytes);
+  // rhjr: TODO pvc_spitcan_read_registers() should be used for 32-bit support.
+  pvc_spitcan_read_register(REGISTER_RXB0DM, &msg->data);
 
   // rhjr: clear the RXBn, to allow new messages.  
-  LOG(TAG_NONE, WARNING, "Resetting.");
-  pvc_spitcan_set_register(REGISTER_CANINTF, 0x0);
+  pvc_spitcan_set_register(REGISTER_CANINTF, 0);
 
   return msg;
 }
@@ -394,6 +393,5 @@ pvc_spitcan_received_new_message ()
 
   if ((result & rxb0if_mask) == 1)
     return true;
-
   return false;
 }

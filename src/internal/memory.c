@@ -42,5 +42,6 @@ pvc_arena_allocate (pvc_arena *arena, uint32_t size)
 internal void
 pvc_arena_free (pvc_arena *arena)
 {
-  arena->offset = 0;
+  // rhjr: 0 to indicate, the index will be '0'.
+  arena->offset = 0 + sizeof(pvc_arena);
 }
