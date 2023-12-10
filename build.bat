@@ -1,5 +1,9 @@
 @echo off
 
-if not exist ".\sdkconfig" idf.py set-target esp32
+pushd "%~dp0"
 
-idf.py build
+if not exist "sdkconfig" idf.py set-target esp32
+
+idf.py -B .\build build 
+
+popd
