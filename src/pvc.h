@@ -37,5 +37,20 @@ enum pvc_pfs_state
 internal void          pvc_pfs_initalize ();
 internal pvc_pfs_state pvc_pfs_is_open   ();
 
+//= rhjr: paddle flow switch
+
+#define PVC_PFS_ENABLE 0x0
+#define PVC_PFS_PIN    GPIO_NUM_35
+
+typedef enum pvc_pfs_state pvc_pfs_state;
+enum pvc_pfs_state
+{
+  PVC_PFS_CLOSED = 0x00, 
+  PVC_PFS_OPEN
+};
+
+internal void          pvc_pfs_main    (UNUSED void *parameters);
+internal pvc_pfs_state pvc_pfs_is_open ();
+
 #endif // PVC_CORE_H
 // pvc.h ends here.

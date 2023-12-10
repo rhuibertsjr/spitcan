@@ -152,6 +152,10 @@ void app_main (void)
 
   //- rhjr: main thread
 
+#if PVC_PFS_ENABLE
+  xTaskCreate(pvc_pfs_main, "paddle-flow-switch-task", 4096, NULL, 1, NULL);
+#endif
+
   while(1)
   {
     vTaskDelay(20 / portTICK_PERIOD_MS);
