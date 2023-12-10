@@ -28,9 +28,9 @@
 
 //- rhjr: units
 
-#define BYTES(x) ((x * 8)) 
+#define BYTES(x) (((x) * 8)) 
 
-#define MHZ(x)   ((x * 1000000))
+#define MHZ(x)   (((x) * 1000000))
 
 #define SEC(x)   ((x) * 1000ULL)
 #define MS(x)    ((x) / 1000ULL)

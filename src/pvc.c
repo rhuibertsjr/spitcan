@@ -67,8 +67,11 @@ pvc_task_spitcan (void *parameters)
     {
       pvc_spitcan_message *msg = pvc_spitcan_read_message(params->arena);
 
-      #if PVC_SPITCAN_DEBUG
-      LOG(TAG_MSG, INFO, "ID %#02x - DATA: %u", msg->identifier, msg->data);
+#if PVC_SPITCAN_DEBUG
+      LOG(
+        TAG_MSG, INFO,
+        "ID 0x%02X - DLC: %u - DATA: %u",
+        msg->identifier, msg->length_in_bytes, msg->data);
 #endif
 
       pvc_platform_memory_restore(arena, restore_alloc_pos);
@@ -95,7 +98,7 @@ pvc_task_paddle_flow_switch (void *parameters)
     {
       .identifier      = PVC_PFS_ID,
       .length_in_bytes = 0x01,
-      .data            = 1  
+      .data            = 1 
     }; 
 
   LOG(TAG_PLATFORM, INFO, "Starting paddle flow switch task.");
@@ -106,6 +109,13 @@ pvc_task_paddle_flow_switch (void *parameters)
     if ((result = pvc_pfs_is_open()))
     {
       pvc_spitcan_write_message(&message, HIGH_INTM_PRIORITY);
+
+#if PVC_SPITCAN_DEBUG
+      LOG(
+        TAG_MSG, INFO,
+        "ID 0x%02X - DLC: %u - DATA: %u",
+        message.identifier, message.length_in_bytes, message.data);
+#endif
     }
 
     vTaskDelayUntil(&last_wake_time, frequency);

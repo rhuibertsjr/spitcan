@@ -158,30 +158,36 @@ pvc_spitcan_read_registers (
   pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes)
 {
   ASSERT(length_in_bytes <= 14, "Spitcan message exceeds the 14 byte limit.");
+
   esp_err_t result;
 
-  //- rhjr: transaction
-  spi_transaction_t transaction = {0};
-  uint8_t tx_message[16] = {0}; // rhjr: TODO expand 
-  uint8_t rx_message[16] = {0}; // rhjr: TODO expand
+  // rhjr: This c99 compiler support dynamically sized arrays, these should
+  //       always be initialized using memset!
+  uint8_t tx_message[length_in_bytes + 2]; 
+  memset(tx_message, 0, sizeof(uint8_t) * length_in_bytes + 2);
 
-  transaction.flags  = 0; // rhjr: tx_data is limited to 32-bits.
-  transaction.length =
-    BYTES(2 + (size_t) length_in_bytes); // rhjr: inst. + register
+  uint8_t rx_message[length_in_bytes + 2];
+  memset(rx_message, 0, sizeof(uint8_t) * length_in_bytes + 2);
 
   tx_message[0] = INSTRUCTION_READ;
   tx_message[1] = _register;
+
+  //- rhjr: transaction
+
+  spi_transaction_t transaction = {0};
+  transaction.flags  = 0; // rhjr: tx_data is limited to 32-bits.
+  transaction.length =
+    BYTES(2 + (size_t) length_in_bytes); // rhjr: inst. + register + dlc.
 
   transaction.tx_buffer = tx_message;
   transaction.rx_buffer = rx_message;
 
   //- rhjr: transmission
-  uint8_t *data_temp = data;
 
   result = spi_device_polling_transmit(mcp2515, &transaction);
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-    memcpy(data_temp++, &rx_message[index + 2], sizeof(uint8_t));
+    memcpy(data++, &rx_message[index + 2], sizeof(uint8_t));
 
   ASSERT(result == ESP_OK, "Transmission failed, error code: %u", result); 
   return result;
@@ -210,14 +216,14 @@ pvc_spitcan_set_register(pvc_mcp_register _register, uint8_t value)
 
 internal esp_err_t
 pvc_spitcan_set_registers(
-  pvc_mcp_register _register,  uint8_t *data, uint8_t length_in_bytes)
+  pvc_mcp_register _register, uint8_t *data, uint8_t length_in_bytes)
 {
   ASSERT(length_in_bytes <= 14, "Spitcan message exceeds the 14 byte limit.");
   esp_err_t result;
 
   //- rhjr: transaction
   spi_transaction_t transaction = {0};
-  uint8_t message[16] = {0}; // rhjr: TODO expand
+  uint8_t message[8] = {0}; // rhjr: TODO expand
 
   transaction.flags  = 0; // rhjr: tx_data is limited to 32-bits.
   transaction.length = BYTES(2 + (size_t) length_in_bytes); // rhjr: inst. + register
@@ -226,7 +232,9 @@ pvc_spitcan_set_registers(
   message[1] = _register;
 
   for (uint8_t index = 0; index < length_in_bytes; index += 1)
-  message[index + 2] = *data++;
+  {
+    message[index + 2] = *data++;
+  }
 
   transaction.tx_buffer = message;
 
@@ -313,10 +321,13 @@ pvc_spitcan_write_message (
   pvc_spitcan_set_register(REGISTER_TXB0SIDL, txb_sidn_buffer[1]);
 
   // rhjr: fill message with data
-  uint8_t data = 0;
-  memcpy(&data, &message->data, message->length_in_bytes);
+  uint8_t dm_bytes[4] = {0}; 
+  for (uint8_t index = 0; index < message->length_in_bytes; index++)
+    dm_bytes[index] = (message->data >> (index * 8)) & 0xFF;
 
-  pvc_spitcan_set_register(REGISTER_TXB0DM, data);
+  pvc_spitcan_set_registers(
+    REGISTER_TXB0DM, dm_bytes, message->length_in_bytes);
+
   pvc_spitcan_modify_register(REGISTER_TXB0DLC, 0x4F, message->length_in_bytes);
 
   // rhjr: request for transmission 
@@ -371,12 +382,15 @@ pvc_spitcan_read_message(pvc_arena *arena)
   msg->length_in_bytes &= PVC_CAN_DLC_MASK;
 
   if (msg->length_in_bytes == 0)
-    return NULL;
+  return NULL;
 
   //- rhjr: data buffer
 
-  // rhjr: TODO pvc_spitcan_read_registers() should be used for 32-bit support.
-  pvc_spitcan_read_register(REGISTER_RXB0DM, &msg->data);
+  uint8_t data[4] = {0};
+  pvc_spitcan_read_registers(REGISTER_RXB0DM, &data[0], msg->length_in_bytes);
+
+  for (uint32_t index = 0; index < msg->length_in_bytes; index++)
+    msg->data |= (uint32_t) data[index] << (index * BYTES(1));
 
   // rhjr: clear the RXBn, to allow new messages.  
   pvc_spitcan_set_register(REGISTER_CANINTF, 0);
@@ -393,6 +407,6 @@ pvc_spitcan_received_new_message ()
   pvc_spitcan_read_register(REGISTER_CANINTF, &result);
 
   if ((result & rxb0if_mask) == 1)
-    return true;
+  return true;
   return false;
 }
